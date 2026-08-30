@@ -125,7 +125,16 @@ local LucideAssets = {
 
 -- Merge with Airflow.Lucide if available (loaded from lucide-icons.lua)
 local function mergeAirflowIcons()
-    local airflow = getgenv and getgenv().Airflow or _G.Airflow
+    local airflow = nil
+    if type(getgenv) == "function" then
+        local ok, env = pcall(getgenv)
+        if ok and type(env) == "table" then
+            airflow = env.Airflow
+        end
+    end
+    if not airflow and _G then
+        airflow = _G.Airflow
+    end
     if airflow and type(airflow) == "table" and airflow.Lucide then
         for k, v in pairs(airflow.Lucide) do
             LucideAssets[k] = v
@@ -197,7 +206,6 @@ function Icons.Icon(name, size, color)
         img.Image = assetId
     end
     
-    f.GetImage = function() return img end
     return f
 end
 
@@ -824,7 +832,7 @@ function Controls.CreateDropdown(parent, name, config, callback)
     arrow.BackgroundTransparency = 1
     arrow.Parent = btn
     
-    local arrowIcon = Icons.ChevronDown(12)
+    local arrowIcon = Icons.Icon("ChevronDown", 12)
     arrowIcon.Size = UDim2.new(0, 12, 0, 12)
     arrowIcon.Position = UDim2.new(0, 0, 0, 0)
     arrowIcon.Parent = arrow
@@ -1220,7 +1228,7 @@ function Controls.CreateMultiDropdown(parent, name, config, callback)
     arrow.BackgroundTransparency = 1
     arrow.Parent = btn
     
-    local arrowIcon = Icons.ChevronDown(12)
+    local arrowIcon = Icons.Icon("ChevronDown", 12)
     arrowIcon.Size = UDim2.new(0, 12, 0, 12)
     arrowIcon.Parent = arrow
     
@@ -1907,7 +1915,7 @@ function UI:refreshSidebar()
         end
         
         -- Chevron
-        local chevron = Icons.ChevronRight(12)
+        local chevron = Icons.Icon("ChevronRight", 12)
         chevron.Size = UDim2.new(0, 12, 0, 12)
         chevron.Position = UDim2.new(1, -18, 0.5, -6)
         chevron.Parent = btn
@@ -1952,7 +1960,7 @@ function UI:createModuleListArea()
     createCorner(searchFrame, 8)
     createStroke(searchFrame, Theme.Border, 1)
     
-    local searchIcon = Icons.Search(14)
+    local searchIcon = Icons.Icon("Search", 14)
     searchIcon.Size = UDim2.new(0, 14, 0, 14)
     searchIcon.Position = UDim2.new(0, 10, 0.5, -7)
     searchIcon.Parent = searchFrame
@@ -2139,7 +2147,7 @@ function UI:createModuleCard(mod, index)
     menuBtn.Parent = card
     createCorner(menuBtn, 5)
     
-    local menuIcon = Icons.MoreVertical(12)
+    local menuIcon = Icons.Icon("MoreVertical", 12)
     menuIcon.Size = UDim2.new(0, 12, 0, 12)
     menuIcon.Position = UDim2.new(0.5, -6, 0.5, -6)
     menuIcon.Parent = menuBtn
@@ -2304,7 +2312,7 @@ function UI:createSettingsPanel()
     starBtn.Parent = header
     self.settingsStarBtn = starBtn
     
-    local starIcon = Icons.Star(16)
+    local starIcon = Icons.Icon("Star", 16)
     starIcon.Size = UDim2.new(0, 16, 0, 16)
     starIcon.Position = UDim2.new(0.5, -8, 0.5, -8)
     starIcon.Parent = starBtn
@@ -2380,7 +2388,7 @@ function UI:refreshSettingsPanel()
     
     -- Update star
     self.settingsStarIcon:Destroy()
-    local starIcon = mod.Favorite and Icons.StarFilled(16) or Icons.Star(16)
+    local starIcon = mod.Favorite and Icons.Icon("StarFilled", 16, Theme.Accent) or Icons.Icon("Star", 16)
     starIcon.Size = UDim2.new(0, 16, 0, 16)
     starIcon.Position = UDim2.new(0.5, -8, 0.5, -8)
     starIcon.Parent = self.settingsStarBtn
@@ -2515,7 +2523,7 @@ function UI:createConfigPage()
     backBtn.Parent = header
     createCorner(backBtn, 6)
     
-    local backIcon = Icons.ArrowLeft(14)
+    local backIcon = Icons.Icon("ArrowLeft", 14)
     backIcon.Size = UDim2.new(0, 14, 0, 14)
     backIcon.Position = UDim2.new(0, 8, 0.5, -7)
     backIcon.Parent = backBtn
@@ -2554,7 +2562,7 @@ function UI:createConfigPage()
     createCorner(searchFrame, 8)
     createStroke(searchFrame, Theme.Border, 1)
     
-    local searchIcon = Icons.Search(14)
+    local searchIcon = Icons.Icon("Search", 14)
     searchIcon.Size = UDim2.new(0, 14, 0, 14)
     searchIcon.Position = UDim2.new(0, 10, 0.5, -7)
     searchIcon.Parent = searchFrame
@@ -2679,7 +2687,7 @@ function UI:createConfigCard(name, index)
     menuBtn.Parent = card
     createCorner(menuBtn, 5)
     
-    local menuIcon = Icons.MoreVertical(14)
+    local menuIcon = Icons.Icon("MoreVertical", 14)
     menuIcon.Size = UDim2.new(0, 14, 0, 14)
     menuIcon.Position = UDim2.new(0.5, -7, 0.5, -7)
     menuIcon.Parent = menuBtn
