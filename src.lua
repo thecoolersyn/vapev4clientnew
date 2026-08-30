@@ -1,18 +1,3 @@
---[[
-    Impulse UI Framework
-    A complete, modular, data-driven Roblox UI framework.
-    
-    Features:
-    - Draggable desktop-style window
-    - Module registration system with categories
-    - Data-driven settings panel (Toggle, Slider, Dropdown, etc.)
-    - Config manager with JSON serialization
-    - Notification system
-    - Lucide-style icons
-    - Dark theme
-    - Animations via TweenService
-]]
-
 local Impulse = {}
 Impulse.__index = Impulse
 
