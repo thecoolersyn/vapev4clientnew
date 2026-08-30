@@ -1771,7 +1771,7 @@ function UI:createTopBar()
     end)
     
     minimizeBtn.MouseButton1Click:Connect(function()
-        self:toggleMinimize()
+        self:toggleMinimized()
     end)
     
     closeBtn.MouseButton1Click:Connect(function()
