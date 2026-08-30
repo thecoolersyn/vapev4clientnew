@@ -380,7 +380,7 @@ function ConfigService:_collectAll()
     if registry then
         for _, mod in pairs(registry.modules) do
             local modData = { Enabled = mod.Enabled, Settings = {} }
-            for _, setting in ipairs(mod.Settings) do
+            for _, setting in pairs(mod.Settings) do
                 modData.Settings[setting.Name] = setting.Value
             end
             data.Modules[mod.Name] = modData
