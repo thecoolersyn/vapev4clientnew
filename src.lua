@@ -1537,6 +1537,7 @@ function ModuleTab:Add(name, options)
     end
     
     local mod = ModuleInstance.new(options, self.Name)
+    mod.Name = name
     if options.Description then mod.Description = options.Description end
     if options.Default ~= nil then mod.Enabled = options.Default end
     if options.Favorite then mod.Favorite = options.Favorite end
