@@ -1,5 +1,5 @@
 --[[
-    Impulse UI Framework
+    Impulse UI Framework v1.0
     A complete, modular, data-driven Roblox UI framework.
     
     Features:
