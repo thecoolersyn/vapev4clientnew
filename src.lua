@@ -292,7 +292,7 @@ function FileSystemAdapter:List(directory)
             for _, f in ipairs(files) do
                 local name = f:match("[^/\\]+$") or f
                 if name:match("%.json$") then
-                    table.insert(result, name:gsub("%.json$", ""))
+                    result[#result + 1] = name:gsub("%.json$", "")
                 end
             end
             return result
@@ -534,7 +534,7 @@ function NotificationService:Notify(title, message, notifType)
     })
     tweenIn:Play()
     
-    table.insert(self.notifications, card)
+    self.notifications[#self.notifications + 1] = card
     
     -- Auto remove
     task.delay(3.5, function()
@@ -1405,7 +1405,7 @@ function ModuleInstance:_addSetting(name, config, type)
         Callback = config.Callback,
     }
     self.Settings[name] = setting
-    table.insert(self._settingOrder, name)
+    self._settingOrder[#self._settingOrder + 1] = name
     return setting
 end
 
@@ -1849,12 +1849,12 @@ function UI:refreshSidebar()
     local categories = {}
     
     -- Favorites first
-    table.insert(categories, {
+    categories[#categories + 1] = {
         Name = "Favorites",
         Icon = "Star",
         Order = 0,
         Count = 0
-    })
+    }
     
     local registry = _getInstance()._registry
     if registry then
@@ -1863,12 +1863,12 @@ function UI:refreshSidebar()
             for _, mod in pairs(cat.Modules) do
                 if mod.Enabled then count = count + 1 end
             end
-            table.insert(categories, {
+            categories[#categories + 1] = {
                 Name = name,
                 Icon = cat.Icon,
                 Order = cat.Order,
                 Count = count
-            })
+            }
         end
     end
     
@@ -2021,14 +2021,14 @@ function UI:refreshModules()
         if self.selectedCategory == "Favorites" then
             for name, mod in pairs(registry.modules) do
                 if mod.Favorite then
-                    table.insert(modules, mod)
+                    modules[#modules + 1] = mod
                 end
             end
         else
             local cat = registry.categories[self.selectedCategory]
             if cat then
                 for name, mod in pairs(cat.Modules) do
-                    table.insert(modules, mod)
+                    modules[#modules + 1] = mod
                 end
             end
         end
@@ -2040,7 +2040,7 @@ function UI:refreshModules()
         for _, mod in ipairs(modules) do
             local searchIn = (mod.Name .. " " .. mod.Description .. " " .. mod.Category):lower()
             if searchIn:find(self.searchTerm, 1, true) then
-                table.insert(filtered, mod)
+                filtered[#filtered + 1] = mod
             end
         end
         modules = filtered
@@ -2644,7 +2644,7 @@ function UI:refreshConfigList()
         local filtered = {}
         for _, name in ipairs(configs) do
             if name:lower():find(searchTerm, 1, true) then
-                table.insert(filtered, name)
+                filtered[#filtered + 1] = name
             end
         end
         configs = filtered
@@ -2904,14 +2904,14 @@ function UI:makeDraggable()
             )
         end
     end)
-    table.insert(self.connections, conn)
+    self.connections[#self.connections + 1] = conn
     
     local conn2 = UserInputService.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = false
         end
     end)
-    table.insert(self.connections, conn2)
+    self.connections[#self.connections + 1] = conn2
 end
 
 function UI:close()
