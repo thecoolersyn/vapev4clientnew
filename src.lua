@@ -671,12 +671,6 @@ function Controls.CreateToggle(parent, name, default, callback)
         if callback then callback(enabled) end
     end)
     
-    container.GetEnabled = function() return enabled end
-    container.SetEnabled = function(val)
-        enabled = val and true or false
-        updateVisuals(true)
-    end
-    
     return container
 end
 
@@ -788,10 +782,6 @@ function Controls.CreateSlider(parent, name, config, callback)
         dragging = true
     end)
     
-    container.GetValue = function() return value end
-    container.SetValue = function(val)
-        updateSlider(val, true)
-    end
     
     return container
 end
@@ -907,12 +897,6 @@ function Controls.CreateDropdown(parent, name, config, callback)
         end
     end)
     
-    container.GetValue = function() return value end
-    container.SetValue = function(val)
-        value = tostring(val)
-        valueLabel.Text = value
-    end
-    
     return container
 end
 
@@ -971,12 +955,6 @@ function Controls.CreateKeybind(parent, name, config, callback)
             conn:Disconnect()
         end
     end)
-    
-    container.GetValue = function() return value end
-    container.SetValue = function(val)
-        value = val
-        updateLabel()
-    end
     
     return container
 end
@@ -1062,12 +1040,6 @@ function Controls.CreateColorPicker(parent, name, config, callback)
     end
     
     btn.MouseButton1Click:Connect(openPicker)
-    
-    container.GetValue = function() return value end
-    container.SetValue = function(val)
-        value = val
-        btn.BackgroundColor3 = val
-    end
     
     return container
 end
@@ -1169,12 +1141,6 @@ function Controls.CreateTextbox(parent, name, config, callback)
         value = box.Text
         if callback then callback(value) end
     end)
-    
-    container.GetValue = function() return value end
-    container.SetValue = function(val)
-        value = tostring(val)
-        box.Text = value
-    end
     
     return container
 end
@@ -1301,14 +1267,6 @@ function Controls.CreateMultiDropdown(parent, name, config, callback)
     
     btn.MouseButton1Click:Connect(openDropdown)
     
-    container.GetValue = function() return values end
-    container.SetValue = function(vals)
-        values = {}
-        for _, v in ipairs(vals or {}) do
-            values[tostring(v)] = true
-        end
-        valueLabel.Text = getDisplayText()
-    end
     
     return container
 end
@@ -2432,7 +2390,6 @@ function UI:createSettingControl(setting, mod)
             setting.Value = val
             if setting.Callback then safeCall(setting.Callback, val) end
         end)
-        ctrl.SetEnabled(setting.Value)
         
     elseif setting.Type == "Slider" then
         ctrl = Controls.CreateSlider(self.settingsScroll, setting.Name, {
