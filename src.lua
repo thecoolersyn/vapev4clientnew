@@ -700,11 +700,13 @@ function Controls.CreateSlider(parent, name, config, callback)
     valueLabel.Position = UDim2.new(0.5, 0, 0, 0)
     
     -- Slider track
-    local track = Instance.new("Frame")
+    local track = Instance.new("TextButton")
     track.Size = UDim2.new(1, 0, 0, 6)
     track.Position = UDim2.new(0, 0, 1, -10)
     track.BackgroundColor3 = Theme.SliderTrack
     track.BorderSizePixel = 0
+    track.AutoButtonColor = false
+    track.Text = ""
     track.Parent = container
     createCorner(track, 3)
     
