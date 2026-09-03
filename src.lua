@@ -902,7 +902,7 @@ function Controls.CreateDropdown(parent, name, config, callback)
         dropdownFrame.BackgroundColor3 = Theme.SurfaceLight
         dropdownFrame.BorderSizePixel = 0
         dropdownFrame.ZIndex = 100
-        dropdownFrame.Parent = container.Parent.Parent
+        dropdownFrame.Parent = container.Parent.Parent.Parent
         anchorPopup(dropdownFrame, btn, 0, btn.AbsoluteSize.Y + 2)
         createCorner(dropdownFrame, 5)
         createStroke(dropdownFrame, Theme.Border, 1)
@@ -1074,7 +1074,7 @@ function Controls.CreateColorPicker(parent, name, config, callback)
         pickerFrame.BackgroundColor3 = Theme.SurfaceLight
         pickerFrame.BorderSizePixel = 0
         pickerFrame.ZIndex = 100
-        pickerFrame.Parent = container.Parent.Parent
+        pickerFrame.Parent = container.Parent.Parent.Parent
         anchorPopup(pickerFrame, btn, -128, 20)
         createCorner(pickerFrame, 7)
         createStroke(pickerFrame, Theme.Border, 1)
@@ -1287,7 +1287,7 @@ function Controls.CreateMultiDropdown(parent, name, config, callback)
         dropdownFrame.BackgroundColor3 = Theme.SurfaceLight
         dropdownFrame.BorderSizePixel = 0
         dropdownFrame.ZIndex = 100
-        dropdownFrame.Parent = container.Parent.Parent
+        dropdownFrame.Parent = container.Parent.Parent.Parent
         anchorPopup(dropdownFrame, btn, 0, btn.AbsoluteSize.Y + 2)
         createCorner(dropdownFrame, 5)
         createStroke(dropdownFrame, Theme.Border, 1)
