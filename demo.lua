@@ -111,7 +111,7 @@ local Triggerbot = Combat:Add("Triggerbot", {
 
 Triggerbot:AddToggle("Enabled", { Default = false })
 Triggerbot:AddSlider("FOV", { Min = 0, Max = 1000, Default = 200, Decimals = 0 })
-Triggerbot:AddDropdown("Target", {"Head", "Torso", "Random"}, "Head")
+Triggerbot:AddDropdown("Target", {Options = {"Head", "Torso", "Random"}, Default = "Head"})
 Triggerbot:AddToggle("Team Check", { Default = true })
 
 local KillAura = Combat:Add("Kill Aura", {
@@ -137,7 +137,7 @@ local ESP = Render:Add("ESP", {
 ESP:AddToggle("Enabled", { Default = false })
 ESP:AddColorPicker("Color", { Default = Color3.fromRGB(100, 220, 160) })
 ESP:AddSlider("Thickness", { Min = 1, Max = 5, Default = 2, Decimals = 0 })
-ESP:AddDropdown("Style", {"Outline", "Fill", "Glow"}, "Outline")
+ESP:AddDropdown("Style", {Options = {"Outline", "Fill", "Glow"}, Default = "Outline"})
 ESP:AddToggle("Show Health", { Default = true })
 ESP:AddToggle("Show Distance", { Default = true })
 
@@ -147,7 +147,7 @@ local Tracers = Render:Add("Tracers", {
 
 Tracers:AddToggle("Enabled", { Default = false })
 Tracers:AddColorPicker("Color", { Default = Color3.fromRGB(255, 255, 255) })
-Tracers:AddDropdown("Origin", {"Top", "Middle", "Bottom"}, "Bottom")
+Tracers:AddDropdown("Origin", {Options = {"Top", "Middle", "Bottom"}, Default = "Bottom"})
 Tracers:AddSlider("Thickness", { Min = 1, Max = 3, Default = 1, Decimals = 0 })
 
 local Chams = Render:Add("Chams", {
@@ -155,7 +155,7 @@ local Chams = Render:Add("Chams", {
 })
 
 Chams:AddToggle("Enabled", { Default = false })
-Chams:AddDropdown("Material", {"ForceField", "Neon", "Glass", "SmoothPlastic"}, "ForceField")
+Chams:AddDropdown("Material", {Options = {"ForceField", "Neon", "Glass", "SmoothPlastic"}, Default = "ForceField"})
 Chams:AddColorPicker("Color", { Default = Color3.fromRGB(255, 100, 100) })
 Chams:AddSlider("Transparency", { Min = 0, Max = 1, Default = 0, Decimals = 2 })
 
@@ -175,12 +175,12 @@ local AutoClicker = Utility:Add("AutoClicker", {
 })
 
 AutoClicker:AddToggle("Enabled", { Default = false })
-AutoClicker:AddDropdown("Trigger mode", {"Hold to click", "Always", "Toggle"}, "Hold to click")
+AutoClicker:AddDropdown("Trigger mode", {Options = {"Hold to click", "Always", "Toggle"}, Default = "Hold to click"})
 AutoClicker:AddToggle("Break blocks", { Default = true })
 AutoClicker:AddSlider("Break blocks delay", { Min = 0, Max = 20, Default = 10, Decimals = 0 })
 AutoClicker:AddToggle("Break blocks whitelist", { Default = false })
 AutoClicker:AddSlider("CPS", { Min = 1, Max = 20, Default = 13.7, Decimals = 1 })
-AutoClicker:AddDropdown("Randomization", {"None", "Basic", "Extra", "Extra+"}, "Extra+")
+AutoClicker:AddDropdown("Randomization", {Options = {"None", "Basic", "Extra", "Extra+"}, Default = "Extra+"})
 AutoClicker:AddToggle("Jitter", { Default = false })
 AutoClicker:AddToggle("Limit items", { Default = false })
 
@@ -194,7 +194,7 @@ local Scaffold = World:Add("Scaffold", {
 Scaffold:AddToggle("Enabled", { Default = false })
 Scaffold:AddSlider("Blocks/s", { Min = 1, Max = 20, Default = 10, Decimals = 0 })
 Scaffold:AddToggle("Tower", { Default = false })
-Scaffold:AddDropdown("Block", {"Obsidian", "Endstone", "Netherite"}, "Obsidian")
+Scaffold:AddDropdown("Block", {Options = {"Obsidian", "Endstone", "Netherite"}, Default = "Obsidian"})
 
 -------------------------------------------------------------------------------
 -- Blatant Modules
@@ -205,7 +205,7 @@ local Fly = Blatant:Add("Fly", {
 
 Fly:AddToggle("Enabled", { Default = false })
 Fly:AddSlider("Speed", { Min = 1, Max = 100, Default = 50, Decimals = 0 })
-Fly:AddDropdown("Mode", {"Vanilla", "Glide", "Boost"}, "Vanilla")
+Fly:AddDropdown("Mode", {Options = {"Vanilla", "Glide", "Boost"}, Default = "Vanilla"})
 Fly:AddToggle("Anti-Kick", { Default = true })
 
 local Speed = Blatant:Add("Speed", {
@@ -214,7 +214,7 @@ local Speed = Blatant:Add("Speed", {
 
 Speed:AddToggle("Enabled", { Default = false })
 Speed:AddSlider("Multiplier", { Min = 1, Max = 10, Default = 2, Decimals = 1 })
-Speed:AddDropdown("Mode", {"Velocity", "CFrame"}, "Velocity")
+Speed:AddDropdown("Mode", {Options = {"Velocity", "CFrame"}, Default = "Velocity"})
 
 -------------------------------------------------------------------------------
 -- Module Callbacks

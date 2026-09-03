@@ -29,6 +29,7 @@ local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
+local GuiService = game:GetService("GuiService")
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
@@ -607,6 +608,58 @@ local function createText(parent, text, size, color, font, xAlign)
     return t
 end
 
+-- Anchors a popup frame to an anchor GuiObject and keeps it attached for as
+-- long as both are alive. The popup is positioned relative to its parent
+-- using the anchor's current absolute position (never a stale screen-space
+-- offset), and the position is refreshed every frame so the popup follows
+-- the window when it is dragged, scrolled, or repositioned. Cleanup is
+-- automatic: when either the popup or the anchor is destroyed, the tracking
+-- connection is disconnected (and a dangling popup is destroyed with its
+-- anchor so no orphaned popups are left behind).
+local function anchorPopup(popup, anchor, offsetX, offsetY)
+    local conn = nil
+
+    local function updatePosition()
+        if not popup.Parent or not anchor.Parent then
+            return false
+        end
+        local host = popup.Parent
+        local anchorPos = anchor.AbsolutePosition
+        local hostPos = host.AbsolutePosition
+        popup.Position = UDim2.new(
+            0, anchorPos.X - hostPos.X + (offsetX or 0),
+            0, anchorPos.Y - hostPos.Y + (offsetY or 0)
+        )
+        return true
+    end
+
+    updatePosition()
+
+    conn = RunService.RenderStepped:Connect(function()
+        if not updatePosition() then
+            if conn then
+                conn:Disconnect()
+                conn = nil
+            end
+        end
+    end)
+
+    popup.Destroying:Connect(function()
+        if conn then
+            conn:Disconnect()
+            conn = nil
+        end
+    end)
+
+    anchor.Destroying:Connect(function()
+        if popup and popup.Parent then
+            popup:Destroy()
+        end
+    end)
+
+    return popup
+end
+
 --------------------------------------------------------------------------------
 -- SETTING CONTROLS
 --------------------------------------------------------------------------------
@@ -846,11 +899,11 @@ function Controls.CreateDropdown(parent, name, config, callback)
         
         dropdownFrame = Instance.new("Frame")
         dropdownFrame.Size = UDim2.new(0, btn.AbsoluteSize.X, 0, #options * 26 + 6)
-        dropdownFrame.Position = UDim2.new(0, btn.AbsolutePosition.X, 0, btn.AbsolutePosition.Y + btn.AbsoluteSize.Y + 2)
         dropdownFrame.BackgroundColor3 = Theme.SurfaceLight
         dropdownFrame.BorderSizePixel = 0
         dropdownFrame.ZIndex = 100
         dropdownFrame.Parent = container.Parent.Parent
+        anchorPopup(dropdownFrame, btn, 0, btn.AbsoluteSize.Y + 2)
         createCorner(dropdownFrame, 5)
         createStroke(dropdownFrame, Theme.Border, 1)
         
@@ -891,13 +944,28 @@ function Controls.CreateDropdown(parent, name, config, callback)
     
     btn.MouseButton1Click:Connect(openDropdown)
     
-    -- Close dropdown when clicking elsewhere
-    UserInputService.InputBegan:Connect(function(input)
+    -- Close dropdown when clicking outside of it (and outside the button)
+    local closeOnOutsideClick = UserInputService.InputBegan:Connect(function(input)
         if open and input.UserInputType == Enum.UserInputType.MouseButton1 then
-            if dropdownFrame and not dropdownFrame.AbsolutePosition then
+            local mouseLoc = UserInputService:GetMouseLocation()
+            local guiInset = GuiService:GetGuiInset()
+            local pos = Vector2.new(mouseLoc.X, mouseLoc.Y - guiInset.Y)
+            
+            local function isInside(gui)
+                if not gui or not gui.Parent then return false end
+                local p, s = gui.AbsolutePosition, gui.AbsoluteSize
+                return pos.X >= p.X and pos.X <= p.X + s.X
+                    and pos.Y >= p.Y and pos.Y <= p.Y + s.Y
+            end
+            
+            if not isInside(btn) and not isInside(dropdownFrame) then
                 closeDropdown()
             end
         end
+    end)
+    
+    container.Destroying:Connect(function()
+        closeOnOutsideClick:Disconnect()
     end)
     
     return container
@@ -1003,11 +1071,11 @@ function Controls.CreateColorPicker(parent, name, config, callback)
         
         pickerFrame = Instance.new("Frame")
         pickerFrame.Size = UDim2.new(0, 160, 0, 120)
-        pickerFrame.Position = UDim2.new(0, btn.AbsolutePosition.X - 128, 0, btn.AbsolutePosition.Y + 20)
         pickerFrame.BackgroundColor3 = Theme.SurfaceLight
         pickerFrame.BorderSizePixel = 0
         pickerFrame.ZIndex = 100
         pickerFrame.Parent = container.Parent.Parent
+        anchorPopup(pickerFrame, btn, -128, 20)
         createCorner(pickerFrame, 7)
         createStroke(pickerFrame, Theme.Border, 1)
         
@@ -1216,11 +1284,11 @@ function Controls.CreateMultiDropdown(parent, name, config, callback)
         
         dropdownFrame = Instance.new("Frame")
         dropdownFrame.Size = UDim2.new(0, btn.AbsoluteSize.X, 0, #options * 26 + 6)
-        dropdownFrame.Position = UDim2.new(0, btn.AbsolutePosition.X, 0, btn.AbsolutePosition.Y + btn.AbsoluteSize.Y + 2)
         dropdownFrame.BackgroundColor3 = Theme.SurfaceLight
         dropdownFrame.BorderSizePixel = 0
         dropdownFrame.ZIndex = 100
         dropdownFrame.Parent = container.Parent.Parent
+        anchorPopup(dropdownFrame, btn, 0, btn.AbsoluteSize.Y + 2)
         createCorner(dropdownFrame, 5)
         createStroke(dropdownFrame, Theme.Border, 1)
         
@@ -2150,12 +2218,12 @@ function UI:showModuleContextMenu(mod, parent)
     local menu = Instance.new("Frame")
     menu.Name = "ContextMenu"
     menu.Size = UDim2.new(0, 140, 0, 0)
-    menu.Position = UDim2.new(0, parent.AbsolutePosition.X - 100, 0, parent.AbsolutePosition.Y + 24)
     menu.BackgroundColor3 = Theme.SurfaceLight
     menu.BorderSizePixel = 0
     menu.ZIndex = 200
     menu.ClipsDescendants = true
     menu.Parent = self.modulesPage
+    anchorPopup(menu, parent, -100, 24)
     createCorner(menu, 6)
     createStroke(menu, Theme.Border, 1)
     
@@ -2220,16 +2288,28 @@ function UI:showModuleContextMenu(mod, parent)
     menu.Size = UDim2.new(0, 140, 0, #items * 28 + 8)
     self.contextMenu = menu
     
-    -- Close on click elsewhere
+    -- Close on click outside the menu
     task.delay(0.1, function()
-        local conn
-        conn = UserInputService.InputBegan:Connect(function(input)
+        if not menu.Parent then return end
+        local closeConn
+        closeConn = UserInputService.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                if menu and menu.Parent then
+                local mouseLoc = UserInputService:GetMouseLocation()
+                local guiInset = GuiService:GetGuiInset()
+                local pos = Vector2.new(mouseLoc.X, mouseLoc.Y - guiInset.Y)
+                local mp, ms = menu.AbsolutePosition, menu.AbsoluteSize
+                local inside = pos.X >= mp.X and pos.X <= mp.X + ms.X
+                    and pos.Y >= mp.Y and pos.Y <= mp.Y + ms.Y
+                if not inside and menu and menu.Parent then
                     menu:Destroy()
+                    self.contextMenu = nil
                 end
-                self.contextMenu = nil
-                if conn then conn:Disconnect() end
+            end
+        end)
+        menu.Destroying:Connect(function()
+            if closeConn then
+                closeConn:Disconnect()
+                closeConn = nil
             end
         end)
     end)
@@ -2439,7 +2519,7 @@ function UI:createSettingControl(setting, mod)
     local ctrl = nil
     
     if setting.Type == "Toggle" then
-        ctrl = Controls.CreateToggle(self.settingsScroll, setting.Name, setting.Default, function(val)
+        ctrl = Controls.CreateToggle(self.settingsScroll, setting.Name, setting.Value, function(val)
             setting.Value = val
             if setting.Callback then safeCall(setting.Callback, val) end
         end)
@@ -2470,7 +2550,7 @@ function UI:createSettingControl(setting, mod)
         
     elseif setting.Type == "Keybind" then
         ctrl = Controls.CreateKeybind(self.settingsScroll, setting.Name, {
-            Default = setting.Default
+            Default = setting.Value
         }, function(val)
             setting.Value = val
             mod.Keybind = val
@@ -2479,7 +2559,7 @@ function UI:createSettingControl(setting, mod)
         
     elseif setting.Type == "ColorPicker" then
         ctrl = Controls.CreateColorPicker(self.settingsScroll, setting.Name, {
-            Default = setting.Default
+            Default = setting.Value
         }, function(val)
             setting.Value = val
             if setting.Callback then safeCall(setting.Callback, val) end
@@ -2492,7 +2572,7 @@ function UI:createSettingControl(setting, mod)
         
     elseif setting.Type == "Textbox" then
         ctrl = Controls.CreateTextbox(self.settingsScroll, setting.Name, {
-            Default = setting.Default, Placeholder = setting.Placeholder
+            Default = setting.Value, Placeholder = setting.Placeholder
         }, function(val)
             setting.Value = val
             if setting.Callback then safeCall(setting.Callback, val) end
