@@ -7,7 +7,7 @@ local Impulse
 
 -- Load from local file
 local success, err = pcall(function()
-    local path = "/Users/syn/Opiumware/workspace/vapev4clientnew/src.lua"
+    local path = "workspace/vapev4clientnew/src.lua"
     if isfile and isfile(path) then
         local content = readfile(path)
         local fn, err = loadstring(content)
