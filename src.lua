@@ -1654,7 +1654,7 @@ function UI:createTopBar()
     navLayout.VerticalAlignment = Enum.VerticalAlignment.Center
     navLayout.Parent = nav
     
-    local navItems = {"Modules", "Friends", "Profiles"}
+    local navItems = {"Modules"}
     for _, item in ipairs(navItems) do
         local btn = Instance.new("TextButton")
         btn.Name = item
@@ -2310,6 +2310,9 @@ function UI:createSettingsPanel()
     starIcon.Parent = starBtn
     self.settingsStarIcon = starIcon
     
+    self._starConn = nil
+    self._toggleConn = nil
+    
     -- Enabled toggle
     local toggleBtn = Instance.new("TextButton")
     toggleBtn.Name = "ToggleBtn"
@@ -2331,6 +2334,27 @@ function UI:createSettingsPanel()
     toggleKnob.Parent = toggleBtn
     createCorner(toggleKnob, 7)
     self.settingsToggleKnob = toggleKnob
+    
+    self._starConn = starBtn.MouseButton1Click:Connect(function()
+        local current = self.selectedModule
+        if current then
+            current:SetFavorite(not current.Favorite)
+            self:refreshSettingsPanel()
+            self:refreshModules()
+        end
+    end)
+    
+    self._toggleConn = toggleBtn.MouseButton1Click:Connect(function()
+        local current = self.selectedModule
+        if current then
+            current:SetEnabled(not current.Enabled)
+            self.settingsToggleBtn.BackgroundColor3 = current.Enabled and Theme.ToggleOn or Theme.ToggleOff
+            TweenService:Create(self.settingsToggleKnob, Theme.FastTween, {
+                Position = UDim2.new(current.Enabled and 1 or 0, current.Enabled and -16 or 2, 0.5, -7)
+            }):Play()
+            self:refreshModules()
+        end
+    end)
     
     -- Settings scroll
     local scroll = Instance.new("ScrollingFrame")
@@ -2386,29 +2410,18 @@ function UI:refreshSettingsPanel()
     self.settingsModuleDesc.Text = mod.Description
     
     -- Update star
-    self.settingsStarIcon:Destroy()
+    if self.settingsStarIcon then
+        self.settingsStarIcon:Destroy()
+    end
     local starIcon = mod.Favorite and Icons.Icon("StarFilled", 16, Theme.Accent) or Icons.Icon("Star", 16)
     starIcon.Size = UDim2.new(0, 16, 0, 16)
     starIcon.Position = UDim2.new(0.5, -8, 0.5, -8)
     starIcon.Parent = self.settingsStarBtn
-    
-    self.settingsStarBtn.MouseButton1Click:Connect(function()
-        mod:SetFavorite(not mod.Favorite)
-        self:refreshSettingsPanel()
-    end)
+    self.settingsStarIcon = starIcon
     
     -- Update toggle
     self.settingsToggleBtn.BackgroundColor3 = mod.Enabled and Theme.ToggleOn or Theme.ToggleOff
     self.settingsToggleKnob.Position = UDim2.new(mod.Enabled and 1 or 0, mod.Enabled and -16 or 2, 0.5, -7)
-    
-    self.settingsToggleBtn.MouseButton1Click:Connect(function()
-        mod:SetEnabled(not mod.Enabled)
-        self.settingsToggleBtn.BackgroundColor3 = mod.Enabled and Theme.ToggleOn or Theme.ToggleOff
-        TweenService:Create(self.settingsToggleKnob, Theme.FastTween, {
-            Position = UDim2.new(mod.Enabled and 1 or 0, mod.Enabled and -16 or 2, 0.5, -7)
-        }):Play()
-        self:refreshModules()
-    end)
     
     -- Create setting controls
     for _, sName in ipairs(mod._settingOrder) do

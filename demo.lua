@@ -5,11 +5,11 @@
 
 local Impulse
 
--- Load from local file
-local success, err = pcall(function()
-    local path = "workspace/vapev4clientnew/src.lua"
-    if isfile and isfile(path) then
-        local content = readfile(path)
+-- Load from URL
+if game and game.HttpGet then
+    local url = "https://raw.githubusercontent.com/thecoolersyn/vapev4clientnew/refs/heads/main/src.lua"
+    local ok, content = pcall(game.HttpGet, game, url)
+    if ok and content then
         local fn, err = loadstring(content)
         if fn then
             local ok2, result = pcall(fn)
@@ -22,21 +22,19 @@ local success, err = pcall(function()
             warn("[Impulse] Compile error:", tostring(err))
         end
     else
-        warn("[Impulse] src.lua not found at " .. path)
+        warn("[Impulse] Failed to download from URL")
     end
-end)
-
-if not Impulse then
-    error("Impulse framework not found")
+else
+    warn("[Impulse] game.HttpGet not available")
 end
 
 if not Impulse then
     error("Impulse framework not found")
 end
 
---------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 -- Create Categories (Module Tabs)
---------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 local Combat = Impulse.CreateModule("Combat", {
     Icon = "Swords",
     Order = 1
@@ -62,9 +60,9 @@ local Blatant = Impulse.CreateModule("Blatant", {
     Order = 5
 })
 
---------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 -- Combat Modules
---------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 local AutoParry = Combat:Add("Auto Parry", {
     Description = "Automatically parries incoming attacks.",
     Default = false,
@@ -129,9 +127,9 @@ KillAura:AddMultiDropdown("Weapons", {
     Default = {"Sword"}
 })
 
---------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 -- Render Modules
---------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 local ESP = Render:Add("ESP", {
     Description = "Shows player outlines through walls."
 })
@@ -161,9 +159,9 @@ Chams:AddDropdown("Material", {"ForceField", "Neon", "Glass", "SmoothPlastic"}, 
 Chams:AddColorPicker("Color", { Default = Color3.fromRGB(255, 100, 100) })
 Chams:AddSlider("Transparency", { Min = 0, Max = 1, Default = 0, Decimals = 2 })
 
---------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 -- Utility Modules
---------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 local Sprint = Utility:Add("Sprint", {
     Description = "Hold to sprint faster."
 })
@@ -186,9 +184,9 @@ AutoClicker:AddDropdown("Randomization", {"None", "Basic", "Extra", "Extra+"}, "
 AutoClicker:AddToggle("Jitter", { Default = false })
 AutoClicker:AddToggle("Limit items", { Default = false })
 
---------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 -- World Modules
---------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 local Scaffold = World:Add("Scaffold", {
     Description = "Automatically places blocks below you."
 })
@@ -198,9 +196,9 @@ Scaffold:AddSlider("Blocks/s", { Min = 1, Max = 20, Default = 10, Decimals = 0 }
 Scaffold:AddToggle("Tower", { Default = false })
 Scaffold:AddDropdown("Block", {"Obsidian", "Endstone", "Netherite"}, "Obsidian")
 
---------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 -- Blatant Modules
---------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 local Fly = Blatant:Add("Fly", {
     Description = "Allows you to fly."
 })
@@ -218,23 +216,23 @@ Speed:AddToggle("Enabled", { Default = false })
 Speed:AddSlider("Multiplier", { Min = 1, Max = 10, Default = 2, Decimals = 1 })
 Speed:AddDropdown("Mode", {"Velocity", "CFrame"}, "Velocity")
 
---------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 -- Module Callbacks
---------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 AutoParry:OnToggle(function(enabled)
     print("[Callback] Auto Parry toggled:", enabled)
 end)
 
---------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 -- Create the Window
---------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 Impulse.CreateWindow({
     Name = "Impulse"
 })
 
---------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 -- Create some default configs
---------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 local Config = Impulse.GetConfig()
 if not Config:Exists("Default") then
     Config:Create("Default")
