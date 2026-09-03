@@ -615,32 +615,32 @@ local Controls = {}
 function Controls.CreateToggle(parent, name, default, callback)
     local container = Instance.new("Frame")
     container.Name = "Toggle_" .. name
-    container.Size = UDim2.new(1, 0, 0, 32)
+    container.Size = UDim2.new(1, 0, 0, 28)
     container.BackgroundTransparency = 1
     container.Parent = parent
     
-    local label = createText(container, name, 12, Theme.TextSecondary, Theme.Font)
+    local label = createText(container, name, 11, Theme.TextSecondary, Theme.Font)
     label.Size = UDim2.new(0.6, 0, 1, 0)
     label.Position = UDim2.new(0, 0, 0, 0)
     
     -- Toggle switch
     local switch = Instance.new("TextButton")
-    switch.Size = UDim2.new(0, 36, 0, 20)
-    switch.Position = UDim2.new(1, -36, 0.5, -10)
+    switch.Size = UDim2.new(0, 32, 0, 18)
+    switch.Position = UDim2.new(1, -32, 0.5, -9)
     switch.BackgroundColor3 = Theme.ToggleOff
     switch.BorderSizePixel = 0
     switch.AutoButtonColor = false
     switch.Text = ""
     switch.Parent = container
-    createCorner(switch, 10)
+    createCorner(switch, 9)
     
     local knob = Instance.new("Frame")
-    knob.Size = UDim2.new(0, 16, 0, 16)
-    knob.Position = UDim2.new(0, 2, 0.5, -8)
+    knob.Size = UDim2.new(0, 14, 0, 14)
+    knob.Position = UDim2.new(0, 2, 0.5, -7)
     knob.BackgroundColor3 = Theme.SliderHandle
     knob.BorderSizePixel = 0
     knob.Parent = switch
-    createCorner(knob, 8)
+    createCorner(knob, 7)
     
     local enabled = default or false
     
@@ -648,18 +648,18 @@ function Controls.CreateToggle(parent, name, default, callback)
         if enabled then
             if animate then
                 TweenService:Create(switch, Theme.FastTween, {BackgroundColor3 = Theme.ToggleOn}):Play()
-                TweenService:Create(knob, Theme.FastTween, {Position = UDim2.new(1, -18, 0.5, -8)}):Play()
+                TweenService:Create(knob, Theme.FastTween, {Position = UDim2.new(1, -16, 0.5, -7)}):Play()
             else
                 switch.BackgroundColor3 = Theme.ToggleOn
-                knob.Position = UDim2.new(1, -18, 0.5, -8)
+                knob.Position = UDim2.new(1, -16, 0.5, -7)
             end
         else
             if animate then
                 TweenService:Create(switch, Theme.FastTween, {BackgroundColor3 = Theme.ToggleOff}):Play()
-                TweenService:Create(knob, Theme.FastTween, {Position = UDim2.new(0, 2, 0.5, -8)}):Play()
+                TweenService:Create(knob, Theme.FastTween, {Position = UDim2.new(0, 2, 0.5, -7)}):Play()
             else
                 switch.BackgroundColor3 = Theme.ToggleOff
-                knob.Position = UDim2.new(0, 2, 0.5, -8)
+                knob.Position = UDim2.new(0, 2, 0.5, -7)
             end
         end
     end
@@ -684,26 +684,26 @@ function Controls.CreateSlider(parent, name, config, callback)
     
     local container = Instance.new("Frame")
     container.Name = "Slider_" .. name
-    container.Size = UDim2.new(1, 0, 0, 44)
+    container.Size = UDim2.new(1, 0, 0, 36)
     container.BackgroundTransparency = 1
     container.Parent = parent
     
     local header = Instance.new("Frame")
-    header.Size = UDim2.new(1, 0, 0, 18)
+    header.Size = UDim2.new(1, 0, 0, 16)
     header.BackgroundTransparency = 1
     header.Parent = container
     
-    local label = createText(header, name, 12, Theme.TextSecondary, Theme.Font)
+    local label = createText(header, name, 11, Theme.TextSecondary, Theme.Font)
     label.Size = UDim2.new(0.5, 0, 1, 0)
     
-    local valueLabel = createText(header, tostring(value), 12, Theme.Accent, Theme.FontMedium, Enum.TextXAlignment.Right)
+    local valueLabel = createText(header, tostring(value), 11, Theme.Accent, Theme.FontMedium, Enum.TextXAlignment.Right)
     valueLabel.Size = UDim2.new(0.5, 0, 1, 0)
     valueLabel.Position = UDim2.new(0.5, 0, 0, 0)
     
     -- Slider track
     local track = Instance.new("TextButton")
-    track.Size = UDim2.new(1, 0, 0, 6)
-    track.Position = UDim2.new(0, 0, 1, -10)
+    track.Size = UDim2.new(1, 0, 0, 5)
+    track.Position = UDim2.new(0, 0, 1, -8)
     track.BackgroundColor3 = Theme.SliderTrack
     track.BorderSizePixel = 0
     track.AutoButtonColor = false
@@ -719,14 +719,14 @@ function Controls.CreateSlider(parent, name, config, callback)
     createCorner(fill, 3)
     
     local handle = Instance.new("TextButton")
-    handle.Size = UDim2.new(0, 14, 0, 14)
-    handle.Position = UDim2.new(0, -7, 0.5, -7)
+    handle.Size = UDim2.new(0, 12, 0, 12)
+    handle.Position = UDim2.new(0, -6, 0.5, -6)
     handle.BackgroundColor3 = Theme.SliderHandle
     handle.BorderSizePixel = 0
     handle.AutoButtonColor = false
     handle.Text = ""
     handle.Parent = track
-    createCorner(handle, 7)
+    createCorner(handle, 6)
     
     local dragging = false
     
@@ -743,10 +743,10 @@ function Controls.CreateSlider(parent, name, config, callback)
         
         if animate then
             TweenService:Create(fill, Theme.FastTween, {Size = UDim2.new(pct, 0, 1, 0)}):Play()
-            TweenService:Create(handle, Theme.FastTween, {Position = UDim2.new(pct, -7, 0.5, -7)}):Play()
+            TweenService:Create(handle, Theme.FastTween, {Position = UDim2.new(pct, -6, 0.5, -6)}):Play()
         else
             fill.Size = UDim2.new(pct, 0, 1, 0)
-            handle.Position = UDim2.new(pct, -7, 0.5, -7)
+            handle.Position = UDim2.new(pct, -6, 0.5, -6)
         end
     end
     
@@ -797,11 +797,11 @@ function Controls.CreateDropdown(parent, name, config, callback)
     
     local container = Instance.new("Frame")
     container.Name = "Dropdown_" .. name
-    container.Size = UDim2.new(1, 0, 0, 32)
+    container.Size = UDim2.new(1, 0, 0, 28)
     container.BackgroundTransparency = 1
     container.Parent = parent
     
-    local label = createText(container, name, 12, Theme.TextSecondary, Theme.Font)
+    local label = createText(container, name, 11, Theme.TextSecondary, Theme.Font)
     label.Size = UDim2.new(0.5, 0, 1, 0)
     
     local btn = Instance.new("TextButton")
@@ -812,21 +812,21 @@ function Controls.CreateDropdown(parent, name, config, callback)
     btn.AutoButtonColor = false
     btn.Text = ""
     btn.Parent = container
-    createCorner(btn, 6)
+    createCorner(btn, 5)
     createStroke(btn, Theme.Border, 1)
     
-    local valueLabel = createText(btn, tostring(value), 11, Theme.Text, Theme.Font, Enum.TextXAlignment.Left)
-    valueLabel.Size = UDim2.new(1, -28, 1, 0)
-    valueLabel.Position = UDim2.new(0, 8, 0, 0)
+    local valueLabel = createText(btn, tostring(value), 10, Theme.Text, Theme.Font, Enum.TextXAlignment.Left)
+    valueLabel.Size = UDim2.new(1, -24, 1, 0)
+    valueLabel.Position = UDim2.new(0, 7, 0, 0)
     
     local arrow = Instance.new("Frame")
-    arrow.Size = UDim2.new(0, 12, 0, 12)
-    arrow.Position = UDim2.new(1, -20, 0.5, -6)
+    arrow.Size = UDim2.new(0, 10, 0, 10)
+    arrow.Position = UDim2.new(1, -18, 0.5, -5)
     arrow.BackgroundTransparency = 1
     arrow.Parent = btn
     
-    local arrowIcon = Icons.Icon("ChevronDown", 12)
-    arrowIcon.Size = UDim2.new(0, 12, 0, 12)
+    local arrowIcon = Icons.Icon("ChevronDown", 10)
+    arrowIcon.Size = UDim2.new(0, 10, 0, 10)
     arrowIcon.Position = UDim2.new(0, 0, 0, 0)
     arrowIcon.Parent = arrow
     
@@ -845,21 +845,21 @@ function Controls.CreateDropdown(parent, name, config, callback)
         open = true
         
         dropdownFrame = Instance.new("Frame")
-        dropdownFrame.Size = UDim2.new(0, btn.AbsoluteSize.X, 0, #options * 28 + 8)
+        dropdownFrame.Size = UDim2.new(0, btn.AbsoluteSize.X, 0, #options * 26 + 6)
         dropdownFrame.Position = UDim2.new(0, btn.AbsolutePosition.X, 0, btn.AbsolutePosition.Y + btn.AbsoluteSize.Y + 2)
         dropdownFrame.BackgroundColor3 = Theme.SurfaceLight
         dropdownFrame.BorderSizePixel = 0
         dropdownFrame.ZIndex = 100
         dropdownFrame.Parent = container.Parent.Parent
-        createCorner(dropdownFrame, 6)
+        createCorner(dropdownFrame, 5)
         createStroke(dropdownFrame, Theme.Border, 1)
         
         local layout = createListLayout(dropdownFrame, 0)
-        createPadding(dropdownFrame, 4, 4, 0, 0)
+        createPadding(dropdownFrame, 3, 3, 0, 0)
         
         for i, opt in ipairs(options) do
             local optBtn = Instance.new("TextButton")
-            optBtn.Size = UDim2.new(1, 0, 0, 28)
+            optBtn.Size = UDim2.new(1, 0, 0, 26)
             optBtn.BackgroundColor3 = (opt == value) and Theme.SurfaceActive or Theme.SurfaceLight
             optBtn.BorderSizePixel = 0
             optBtn.AutoButtonColor = false
@@ -869,8 +869,8 @@ function Controls.CreateDropdown(parent, name, config, callback)
             optBtn.Parent = dropdownFrame
             createCorner(optBtn, 4)
             
-            local optLabel = createText(optBtn, tostring(opt), 11, (opt == value) and Theme.Accent or Theme.TextSecondary, Theme.Font, Enum.TextXAlignment.Left)
-            optLabel.Size = UDim2.new(1, -12, 1, 0)
+            local optLabel = createText(optBtn, tostring(opt), 10, (opt == value) and Theme.Accent or Theme.TextSecondary, Theme.Font, Enum.TextXAlignment.Left)
+            optLabel.Size = UDim2.new(1, -10, 1, 0)
             optLabel.Position = UDim2.new(0, 8, 0, 0)
             optLabel.ZIndex = 102
             
@@ -910,11 +910,11 @@ function Controls.CreateKeybind(parent, name, config, callback)
     
     local container = Instance.new("Frame")
     container.Name = "Keybind_" .. name
-    container.Size = UDim2.new(1, 0, 0, 32)
+    container.Size = UDim2.new(1, 0, 0, 28)
     container.BackgroundTransparency = 1
     container.Parent = parent
     
-    local label = createText(container, name, 12, Theme.TextSecondary, Theme.Font)
+    local label = createText(container, name, 11, Theme.TextSecondary, Theme.Font)
     label.Size = UDim2.new(0.6, 0, 1, 0)
     
     local btn = Instance.new("TextButton")
@@ -925,10 +925,10 @@ function Controls.CreateKeybind(parent, name, config, callback)
     btn.AutoButtonColor = false
     btn.Text = ""
     btn.Parent = container
-    createCorner(btn, 6)
+    createCorner(btn, 5)
     createStroke(btn, Theme.Border, 1)
     
-    local valueLabel = createText(btn, tostring(value), 11, Theme.Text, Theme.FontMedium, Enum.TextXAlignment.Center)
+    local valueLabel = createText(btn, tostring(value), 10, Theme.Text, Theme.FontMedium, Enum.TextXAlignment.Center)
     valueLabel.Size = UDim2.new(1, 0, 1, 0)
     
     local function updateLabel()
@@ -968,22 +968,22 @@ function Controls.CreateColorPicker(parent, name, config, callback)
     
     local container = Instance.new("Frame")
     container.Name = "ColorPicker_" .. name
-    container.Size = UDim2.new(1, 0, 0, 32)
+    container.Size = UDim2.new(1, 0, 0, 28)
     container.BackgroundTransparency = 1
     container.Parent = parent
     
-    local label = createText(container, name, 12, Theme.TextSecondary, Theme.Font)
+    local label = createText(container, name, 11, Theme.TextSecondary, Theme.Font)
     label.Size = UDim2.new(0.6, 0, 1, 0)
     
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 36, 0, 20)
-    btn.Position = UDim2.new(1, -36, 0.5, -10)
+    btn.Size = UDim2.new(0, 32, 0, 18)
+    btn.Position = UDim2.new(1, -32, 0.5, -9)
     btn.BackgroundColor3 = value
     btn.BorderSizePixel = 0
     btn.AutoButtonColor = false
     btn.Text = ""
     btn.Parent = container
-    createCorner(btn, 6)
+    createCorner(btn, 5)
     createStroke(btn, Theme.BorderLight, 1)
     
     local pickerOpen = false
@@ -1002,16 +1002,15 @@ function Controls.CreateColorPicker(parent, name, config, callback)
         pickerOpen = true
         
         pickerFrame = Instance.new("Frame")
-        pickerFrame.Size = UDim2.new(0, 180, 0, 140)
-        pickerFrame.Position = UDim2.new(0, btn.AbsolutePosition.X - 144, 0, btn.AbsolutePosition.Y + 24)
+        pickerFrame.Size = UDim2.new(0, 160, 0, 120)
+        pickerFrame.Position = UDim2.new(0, btn.AbsolutePosition.X - 128, 0, btn.AbsolutePosition.Y + 20)
         pickerFrame.BackgroundColor3 = Theme.SurfaceLight
         pickerFrame.BorderSizePixel = 0
         pickerFrame.ZIndex = 100
         pickerFrame.Parent = container.Parent.Parent
-        createCorner(pickerFrame, 8)
+        createCorner(pickerFrame, 7)
         createStroke(pickerFrame, Theme.Border, 1)
         
-        -- Simple color grid
         local colors = {
             Color3.fromRGB(255, 80, 80), Color3.fromRGB(255, 160, 80), Color3.fromRGB(255, 230, 80),
             Color3.fromRGB(80, 255, 120), Color3.fromRGB(80, 200, 255), Color3.fromRGB(160, 100, 255),
@@ -1023,15 +1022,15 @@ function Controls.CreateColorPicker(parent, name, config, callback)
             local row = math.floor((i - 1) / 4)
             local col = (i - 1) % 4
             local cBtn = Instance.new("TextButton")
-            cBtn.Size = UDim2.new(0, 32, 0, 24)
-            cBtn.Position = UDim2.new(0, 12 + col * 40, 0, 12 + row * 32)
+            cBtn.Size = UDim2.new(0, 28, 0, 22)
+            cBtn.Position = UDim2.new(0, 10 + col * 36, 0, 10 + row * 28)
             cBtn.BackgroundColor3 = color
             cBtn.BorderSizePixel = 0
             cBtn.AutoButtonColor = false
             cBtn.Text = ""
             cBtn.ZIndex = 101
             cBtn.Parent = pickerFrame
-            createCorner(cBtn, 4)
+            createCorner(cBtn, 3)
             
             cBtn.MouseButton1Click:Connect(function()
                 value = color
@@ -1050,7 +1049,7 @@ end
 function Controls.CreateButton(parent, name, callback)
     local container = Instance.new("Frame")
     container.Name = "Button_" .. name
-    container.Size = UDim2.new(1, 0, 0, 32)
+    container.Size = UDim2.new(1, 0, 0, 28)
     container.BackgroundTransparency = 1
     container.Parent = parent
     
@@ -1061,10 +1060,10 @@ function Controls.CreateButton(parent, name, callback)
     btn.AutoButtonColor = false
     btn.Text = name
     btn.TextColor3 = Theme.Text
-    btn.TextSize = 12
+    btn.TextSize = 11
     btn.Font = Theme.FontMedium
     btn.Parent = container
-    createCorner(btn, 6)
+    createCorner(btn, 5)
     createStroke(btn, Theme.Border, 1)
     
     btn.MouseEnter:Connect(function()
@@ -1083,11 +1082,11 @@ end
 function Controls.CreateSection(parent, name)
     local container = Instance.new("Frame")
     container.Name = "Section_" .. name
-    container.Size = UDim2.new(1, 0, 0, 24)
+    container.Size = UDim2.new(1, 0, 0, 20)
     container.BackgroundTransparency = 1
     container.Parent = parent
     
-    local label = createText(container, name:upper(), 10, Theme.TextMuted, Theme.FontBold, Enum.TextXAlignment.Left)
+    local label = createText(container, name:upper(), 9, Theme.TextMuted, Theme.FontBold, Enum.TextXAlignment.Left)
     label.Size = UDim2.new(1, 0, 1, 0)
     label.TextTransparency = 0.3
     
@@ -1097,11 +1096,11 @@ end
 function Controls.CreateLabel(parent, text)
     local container = Instance.new("Frame")
     container.Name = "Label"
-    container.Size = UDim2.new(1, 0, 0, 20)
+    container.Size = UDim2.new(1, 0, 0, 18)
     container.BackgroundTransparency = 1
     container.Parent = parent
     
-    local label = createText(container, text, 11, Theme.TextMuted, Theme.Font, Enum.TextXAlignment.Left)
+    local label = createText(container, text, 10, Theme.TextMuted, Theme.Font, Enum.TextXAlignment.Left)
     label.Size = UDim2.new(1, 0, 1, 0)
     label.TextWrapped = true
     
@@ -1115,11 +1114,11 @@ function Controls.CreateTextbox(parent, name, config, callback)
     
     local container = Instance.new("Frame")
     container.Name = "Textbox_" .. name
-    container.Size = UDim2.new(1, 0, 0, 32)
+    container.Size = UDim2.new(1, 0, 0, 28)
     container.BackgroundTransparency = 1
     container.Parent = parent
     
-    local label = createText(container, name, 12, Theme.TextSecondary, Theme.Font)
+    local label = createText(container, name, 11, Theme.TextSecondary, Theme.Font)
     label.Size = UDim2.new(0.4, 0, 1, 0)
     
     local box = Instance.new("TextBox")
@@ -1131,14 +1130,14 @@ function Controls.CreateTextbox(parent, name, config, callback)
     box.PlaceholderText = placeholder
     box.TextColor3 = Theme.Text
     box.PlaceholderColor3 = Theme.TextMuted
-    box.TextSize = 11
+    box.TextSize = 10
     box.Font = Theme.Font
     box.TextXAlignment = Enum.TextXAlignment.Left
     box.ClearTextOnFocus = false
     box.Parent = container
-    createCorner(box, 6)
+    createCorner(box, 5)
     createStroke(box, Theme.Border, 1)
-    createPadding(box, 0, 0, 8, 8)
+    createPadding(box, 0, 0, 7, 7)
     
     box.FocusLost:Connect(function()
         value = box.Text
@@ -1159,11 +1158,11 @@ function Controls.CreateMultiDropdown(parent, name, config, callback)
     
     local container = Instance.new("Frame")
     container.Name = "MultiDropdown_" .. name
-    container.Size = UDim2.new(1, 0, 0, 32)
+    container.Size = UDim2.new(1, 0, 0, 28)
     container.BackgroundTransparency = 1
     container.Parent = parent
     
-    local label = createText(container, name, 12, Theme.TextSecondary, Theme.Font)
+    local label = createText(container, name, 11, Theme.TextSecondary, Theme.Font)
     label.Size = UDim2.new(0.5, 0, 1, 0)
     
     local btn = Instance.new("TextButton")
@@ -1174,7 +1173,7 @@ function Controls.CreateMultiDropdown(parent, name, config, callback)
     btn.AutoButtonColor = false
     btn.Text = ""
     btn.Parent = container
-    createCorner(btn, 6)
+    createCorner(btn, 5)
     createStroke(btn, Theme.Border, 1)
     
     local function getDisplayText()
@@ -1187,18 +1186,18 @@ function Controls.CreateMultiDropdown(parent, name, config, callback)
         return count .. " selected"
     end
     
-    local valueLabel = createText(btn, getDisplayText(), 11, Theme.Text, Theme.Font, Enum.TextXAlignment.Left)
-    valueLabel.Size = UDim2.new(1, -28, 1, 0)
-    valueLabel.Position = UDim2.new(0, 8, 0, 0)
+    local valueLabel = createText(btn, getDisplayText(), 10, Theme.Text, Theme.Font, Enum.TextXAlignment.Left)
+    valueLabel.Size = UDim2.new(1, -24, 1, 0)
+    valueLabel.Position = UDim2.new(0, 7, 0, 0)
     
     local arrow = Instance.new("Frame")
-    arrow.Size = UDim2.new(0, 12, 0, 12)
-    arrow.Position = UDim2.new(1, -20, 0.5, -6)
+    arrow.Size = UDim2.new(0, 10, 0, 10)
+    arrow.Position = UDim2.new(1, -18, 0.5, -5)
     arrow.BackgroundTransparency = 1
     arrow.Parent = btn
     
-    local arrowIcon = Icons.Icon("ChevronDown", 12)
-    arrowIcon.Size = UDim2.new(0, 12, 0, 12)
+    local arrowIcon = Icons.Icon("ChevronDown", 10)
+    arrowIcon.Size = UDim2.new(0, 10, 0, 10)
     arrowIcon.Parent = arrow
     
     local dropdownFrame = nil
@@ -1216,21 +1215,21 @@ function Controls.CreateMultiDropdown(parent, name, config, callback)
         open = true
         
         dropdownFrame = Instance.new("Frame")
-        dropdownFrame.Size = UDim2.new(0, btn.AbsoluteSize.X, 0, #options * 28 + 8)
+        dropdownFrame.Size = UDim2.new(0, btn.AbsoluteSize.X, 0, #options * 26 + 6)
         dropdownFrame.Position = UDim2.new(0, btn.AbsolutePosition.X, 0, btn.AbsolutePosition.Y + btn.AbsoluteSize.Y + 2)
         dropdownFrame.BackgroundColor3 = Theme.SurfaceLight
         dropdownFrame.BorderSizePixel = 0
         dropdownFrame.ZIndex = 100
         dropdownFrame.Parent = container.Parent.Parent
-        createCorner(dropdownFrame, 6)
+        createCorner(dropdownFrame, 5)
         createStroke(dropdownFrame, Theme.Border, 1)
         
         local layout = createListLayout(dropdownFrame, 0)
-        createPadding(dropdownFrame, 4, 4, 0, 0)
+        createPadding(dropdownFrame, 3, 3, 0, 0)
         
         for i, opt in ipairs(options) do
             local optBtn = Instance.new("TextButton")
-            optBtn.Size = UDim2.new(1, 0, 0, 28)
+            optBtn.Size = UDim2.new(1, 0, 0, 26)
             optBtn.BackgroundColor3 = values[tostring(opt)] and Theme.SurfaceActive or Theme.SurfaceLight
             optBtn.BorderSizePixel = 0
             optBtn.AutoButtonColor = false
@@ -1241,17 +1240,17 @@ function Controls.CreateMultiDropdown(parent, name, config, callback)
             createCorner(optBtn, 4)
             
             local check = Instance.new("Frame")
-            check.Size = UDim2.new(0, 14, 0, 14)
-            check.Position = UDim2.new(0, 6, 0.5, -7)
+            check.Size = UDim2.new(0, 12, 0, 12)
+            check.Position = UDim2.new(0, 7, 0.5, -6)
             check.BackgroundColor3 = values[tostring(opt)] and Theme.Accent or Theme.Border
             check.BorderSizePixel = 0
             check.ZIndex = 102
             check.Parent = optBtn
             createCorner(check, 3)
             
-            local optLabel = createText(optBtn, tostring(opt), 11, Theme.TextSecondary, Theme.Font, Enum.TextXAlignment.Left)
-            optLabel.Size = UDim2.new(1, -30, 1, 0)
-            optLabel.Position = UDim2.new(0, 26, 0, 0)
+            local optLabel = createText(optBtn, tostring(opt), 10, Theme.TextSecondary, Theme.Font, Enum.TextXAlignment.Left)
+            optLabel.Size = UDim2.new(1, -26, 1, 0)
+            optLabel.Position = UDim2.new(0, 24, 0, 0)
             optLabel.ZIndex = 102
             
             optBtn.MouseButton1Click:Connect(function()
@@ -1915,29 +1914,29 @@ function UI:createModuleListArea()
     -- Search bar
     local searchFrame = Instance.new("Frame")
     searchFrame.Name = "SearchBar"
-    searchFrame.Size = UDim2.new(1, -24, 0, 32)
-    searchFrame.Position = UDim2.new(0, 12, 0, 10)
+    searchFrame.Size = UDim2.new(1, -16, 0, 28)
+    searchFrame.Position = UDim2.new(0, 8, 0, 6)
     searchFrame.BackgroundColor3 = Theme.Surface
     searchFrame.BorderSizePixel = 0
     searchFrame.Parent = area
-    createCorner(searchFrame, 8)
+    createCorner(searchFrame, 6)
     createStroke(searchFrame, Theme.Border, 1)
     
-    local searchIcon = Icons.Icon("Search", 14)
-    searchIcon.Size = UDim2.new(0, 14, 0, 14)
-    searchIcon.Position = UDim2.new(0, 10, 0.5, -7)
+    local searchIcon = Icons.Icon("Search", 13)
+    searchIcon.Size = UDim2.new(0, 13, 0, 13)
+    searchIcon.Position = UDim2.new(0, 9, 0.5, -6)
     searchIcon.Parent = searchFrame
     
     local searchBox = Instance.new("TextBox")
     searchBox.Name = "SearchInput"
-    searchBox.Size = UDim2.new(1, -36, 1, 0)
-    searchBox.Position = UDim2.new(0, 30, 0, 0)
+    searchBox.Size = UDim2.new(1, -30, 1, 0)
+    searchBox.Position = UDim2.new(0, 28, 0, 0)
     searchBox.BackgroundTransparency = 1
     searchBox.Text = ""
     searchBox.PlaceholderText = "Search modules..."
     searchBox.PlaceholderColor3 = Theme.TextMuted
     searchBox.TextColor3 = Theme.Text
-    searchBox.TextSize = 12
+    searchBox.TextSize = 11
     searchBox.Font = Theme.Font
     searchBox.TextXAlignment = Enum.TextXAlignment.Left
     searchBox.ClearTextOnFocus = false
@@ -1951,16 +1950,16 @@ function UI:createModuleListArea()
     -- Module list scroll
     local scroll = Instance.new("ScrollingFrame")
     scroll.Name = "ModuleList"
-    scroll.Size = UDim2.new(1, -24, 1, -56)
-    scroll.Position = UDim2.new(0, 12, 0, 48)
+    scroll.Size = UDim2.new(1, -16, 1, -42)
+    scroll.Position = UDim2.new(0, 8, 0, 40)
     scroll.BackgroundTransparency = 1
-    scroll.ScrollBarThickness = 4
+    scroll.ScrollBarThickness = 3
     scroll.ScrollBarImageColor3 = Theme.AccentDim
     scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
     scroll.AutomaticSize = Enum.AutomaticSize.Y
     scroll.Parent = area
     
-    local layout = createListLayout(scroll, 4)
+    local layout = createListLayout(scroll, 3)
     self.moduleListLayout = layout
     self.moduleListScroll = scroll
 end
@@ -2020,7 +2019,7 @@ end
 function UI:createModuleCard(mod, index)
     local card = Instance.new("Frame")
     card.Name = "ModuleCard"
-    card.Size = UDim2.new(1, 0, 0, 48)
+    card.Size = UDim2.new(1, 0, 0, 42)
     card.BackgroundColor3 = (mod == self.selectedModule) and Theme.SurfaceLight or Theme.Surface
     card.BorderSizePixel = 0
     card.LayoutOrder = index
@@ -2030,22 +2029,22 @@ function UI:createModuleCard(mod, index)
     -- Accent indicator
     local accent = Instance.new("Frame")
     accent.Name = "Accent"
-    accent.Size = UDim2.new(0, 3, 1, -16)
-    accent.Position = UDim2.new(0, 6, 0, 8)
+    accent.Size = UDim2.new(0, 3, 1, -12)
+    accent.Position = UDim2.new(0, 6, 0, 6)
     accent.BackgroundColor3 = mod.Enabled and Theme.Accent or Theme.Border
     accent.BorderSizePixel = 0
     accent.Parent = card
     createCorner(accent, 2)
     
     -- Module name
-    local nameLabel = createText(card, mod.Name, 13, Theme.Text, Theme.FontMedium, Enum.TextXAlignment.Left)
-    nameLabel.Size = UDim2.new(0.4, 0, 0, 18)
-    nameLabel.Position = UDim2.new(0, 18, 0, 8)
+    local nameLabel = createText(card, mod.Name, 12, Theme.Text, Theme.FontMedium, Enum.TextXAlignment.Left)
+    nameLabel.Size = UDim2.new(0.38, 0, 0, 16)
+    nameLabel.Position = UDim2.new(0, 16, 0, 7)
     
     -- Description
-    local descLabel = createText(card, mod.Description, 11, Theme.TextMuted, Theme.Font, Enum.TextXAlignment.Left)
-    descLabel.Size = UDim2.new(0.6, -100, 0, 14)
-    descLabel.Position = UDim2.new(0, 18, 0, 28)
+    local descLabel = createText(card, mod.Description, 10, Theme.TextMuted, Theme.Font, Enum.TextXAlignment.Left)
+    descLabel.Size = UDim2.new(0.55, -90, 0, 12)
+    descLabel.Position = UDim2.new(0, 16, 0, 25)
     descLabel.TextTruncate = Enum.TextTruncate.AtEnd
     
     -- Right side controls
@@ -2054,8 +2053,8 @@ function UI:createModuleCard(mod, index)
     -- Keybind indicator
     if mod.Keybind then
         local kb = Instance.new("Frame")
-        kb.Size = UDim2.new(0, 24, 0, 18)
-        kb.Position = UDim2.new(1, -rightX - 24, 0.5, -9)
+        kb.Size = UDim2.new(0, 22, 0, 16)
+        kb.Position = UDim2.new(1, -rightX - 22, 0.5, -8)
         kb.BackgroundColor3 = Theme.SurfaceLight
         kb.BorderSizePixel = 0
         kb.Parent = card
@@ -2064,45 +2063,45 @@ function UI:createModuleCard(mod, index)
         local kbLabel = createText(kb, tostring(mod.Keybind.Name or mod.Keybind), 9, Theme.TextSecondary, Theme.FontMedium, Enum.TextXAlignment.Center)
         kbLabel.Size = UDim2.new(1, 0, 1, 0)
         
-        rightX = rightX + 30
+        rightX = rightX + 26
     end
     
     -- Toggle
     local toggle = Instance.new("TextButton")
     toggle.Name = "Toggle"
-    toggle.Size = UDim2.new(0, 32, 0, 18)
-    toggle.Position = UDim2.new(1, -rightX - 32, 0.5, -9)
+    toggle.Size = UDim2.new(0, 30, 0, 16)
+    toggle.Position = UDim2.new(1, -rightX - 30, 0.5, -8)
     toggle.BackgroundColor3 = mod.Enabled and Theme.ToggleOn or Theme.ToggleOff
     toggle.BorderSizePixel = 0
     toggle.AutoButtonColor = false
     toggle.Text = ""
     toggle.Parent = card
-    createCorner(toggle, 9)
+    createCorner(toggle, 8)
     
     local knob = Instance.new("Frame")
-    knob.Size = UDim2.new(0, 14, 0, 14)
-    knob.Position = UDim2.new(mod.Enabled and 1 or 0, mod.Enabled and -16 or 2, 0.5, -7)
+    knob.Size = UDim2.new(0, 12, 0, 12)
+    knob.Position = UDim2.new(mod.Enabled and 1 or 0, mod.Enabled and -14 or 2, 0.5, -6)
     knob.BackgroundColor3 = Theme.SliderHandle
     knob.BorderSizePixel = 0
     knob.Parent = toggle
-    createCorner(knob, 7)
+    createCorner(knob, 6)
     
     toggle.MouseButton1Click:Connect(function()
         mod:SetEnabled(not mod.Enabled)
         toggle.BackgroundColor3 = mod.Enabled and Theme.ToggleOn or Theme.ToggleOff
         TweenService:Create(knob, Theme.FastTween, {
-            Position = UDim2.new(mod.Enabled and 1 or 0, mod.Enabled and -16 or 2, 0.5, -7)
+            Position = UDim2.new(mod.Enabled and 1 or 0, mod.Enabled and -14 or 2, 0.5, -6)
         }):Play()
         accent.BackgroundColor3 = mod.Enabled and Theme.Accent or Theme.Border
     end)
     
-    rightX = rightX + 38
+    rightX = rightX + 34
     
     -- Three-dot menu
     local menuBtn = Instance.new("TextButton")
     menuBtn.Name = "MenuBtn"
-    menuBtn.Size = UDim2.new(0, 22, 0, 22)
-    menuBtn.Position = UDim2.new(1, -rightX - 22, 0.5, -11)
+    menuBtn.Size = UDim2.new(0, 20, 0, 20)
+    menuBtn.Position = UDim2.new(1, -rightX - 20, 0.5, -10)
     menuBtn.BackgroundColor3 = Theme.Surface
     menuBtn.BorderSizePixel = 0
     menuBtn.AutoButtonColor = false
@@ -2110,9 +2109,9 @@ function UI:createModuleCard(mod, index)
     menuBtn.Parent = card
     createCorner(menuBtn, 5)
     
-    local menuIcon = Icons.Icon("MoreVertical", 12)
-    menuIcon.Size = UDim2.new(0, 12, 0, 12)
-    menuIcon.Position = UDim2.new(0.5, -6, 0.5, -6)
+    local menuIcon = Icons.Icon("MoreVertical", 11)
+    menuIcon.Size = UDim2.new(0, 11, 0, 11)
+    menuIcon.Position = UDim2.new(0.5, -5, 0.5, -5)
     menuIcon.Parent = menuBtn
     
     menuBtn.MouseButton1Click:Connect(function()
@@ -2247,81 +2246,117 @@ function UI:createSettingsPanel()
     createStroke(panel, Theme.Border, 1)
     self.settingsPanel = panel
     
+    local padding = Instance.new("UIPadding")
+    padding.PaddingTop = UDim.new(0, 12)
+    padding.PaddingBottom = UDim.new(0, 12)
+    padding.PaddingLeft = UDim.new(0, 12)
+    padding.PaddingRight = UDim.new(0, 12)
+    padding.Parent = panel
+    
+    local layout = Instance.new("UIListLayout")
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.Padding = UDim.new(0, 8)
+    layout.Parent = panel
+    self.settingsPanelLayout = layout
+    
     -- Header
     local header = Instance.new("Frame")
     header.Name = "Header"
-    header.Size = UDim2.new(1, 0, 0, 64)
+    header.Size = UDim2.new(1, 0, 0, 56)
     header.BackgroundTransparency = 1
+    header.LayoutOrder = 0
     header.Parent = panel
     
-    local moduleName = createText(header, "", 14, Theme.Text, Theme.FontMedium, Enum.TextXAlignment.Left)
-    moduleName.Size = UDim2.new(1, -80, 0, 20)
-    moduleName.Position = UDim2.new(0, 14, 0, 10)
+    local moduleName = createText(header, "", 13, Theme.Text, Theme.FontMedium, Enum.TextXAlignment.Left)
+    moduleName.Size = UDim2.new(1, -70, 0, 18)
+    moduleName.Position = UDim2.new(0, 0, 0, 6)
     self.settingsModuleName = moduleName
     
-    local moduleDesc = createText(header, "", 11, Theme.TextMuted, Theme.Font, Enum.TextXAlignment.Left)
+    local moduleDesc = createText(header, "", 10, Theme.TextMuted, Theme.Font, Enum.TextXAlignment.Left)
     moduleDesc.Size = UDim2.new(1, -14, 0, 14)
-    moduleDesc.Position = UDim2.new(0, 14, 0, 32)
+    moduleDesc.Position = UDim2.new(0, 0, 0, 26)
     moduleDesc.TextWrapped = true
     self.settingsModuleDesc = moduleDesc
+    
+    -- Right controls
+    local rightControls = Instance.new("Frame")
+    rightControls.Name = "RightControls"
+    rightControls.Size = UDim2.new(0, 56, 0, 28)
+    rightControls.Position = UDim2.new(1, -56, 0, 8)
+    rightControls.BackgroundTransparency = 1
+    rightControls.Parent = header
+    
+    local rightLayout = Instance.new("UIListLayout")
+    rightLayout.FillDirection = Enum.FillDirection.Horizontal
+    rightLayout.Padding = UDim.new(0, 4)
+    rightLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+    rightLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+    rightLayout.Parent = rightControls
     
     -- Star button
     local starBtn = Instance.new("TextButton")
     starBtn.Name = "StarBtn"
     starBtn.Size = UDim2.new(0, 24, 0, 24)
-    starBtn.Position = UDim2.new(1, -60, 0, 8)
     starBtn.BackgroundTransparency = 1
     starBtn.AutoButtonColor = false
     starBtn.Text = ""
-    starBtn.Parent = header
+    starBtn.LayoutOrder = 1
+    starBtn.Parent = rightControls
     self.settingsStarBtn = starBtn
     
-    local starIcon = Icons.Icon("Star", 16)
-    starIcon.Size = UDim2.new(0, 16, 0, 16)
-    starIcon.Position = UDim2.new(0.5, -8, 0.5, -8)
+    local starIcon = Icons.Icon("Star", 15)
+    starIcon.Size = UDim2.new(0, 15, 0, 15)
+    starIcon.Position = UDim2.new(0.5, -7, 0.5, -7)
     starIcon.Parent = starBtn
     self.settingsStarIcon = starIcon
     
     -- Enabled toggle
     local toggleBtn = Instance.new("TextButton")
     toggleBtn.Name = "ToggleBtn"
-    toggleBtn.Size = UDim2.new(0, 36, 0, 20)
-    toggleBtn.Position = UDim2.new(1, -44, 0, 38)
+    toggleBtn.Size = UDim2.new(0, 32, 0, 18)
     toggleBtn.BackgroundColor3 = Theme.ToggleOff
     toggleBtn.BorderSizePixel = 0
     toggleBtn.AutoButtonColor = false
     toggleBtn.Text = ""
-    toggleBtn.Parent = header
-    createCorner(toggleBtn, 10)
+    toggleBtn.LayoutOrder = 2
+    toggleBtn.Parent = rightControls
+    createCorner(toggleBtn, 9)
     self.settingsToggleBtn = toggleBtn
     
     local toggleKnob = Instance.new("Frame")
-    toggleKnob.Size = UDim2.new(0, 16, 0, 16)
-    toggleKnob.Position = UDim2.new(0, 2, 0.5, -8)
+    toggleKnob.Size = UDim2.new(0, 14, 0, 14)
+    toggleKnob.Position = UDim2.new(0, 2, 0.5, -7)
     toggleKnob.BackgroundColor3 = Theme.SliderHandle
     toggleKnob.BorderSizePixel = 0
     toggleKnob.Parent = toggleBtn
-    createCorner(toggleKnob, 8)
+    createCorner(toggleKnob, 7)
     self.settingsToggleKnob = toggleKnob
     
     -- Settings scroll
     local scroll = Instance.new("ScrollingFrame")
     scroll.Name = "SettingsList"
-    scroll.Size = UDim2.new(1, -16, 1, -72)
-    scroll.Position = UDim2.new(0, 8, 0, 68)
+    scroll.Size = UDim2.new(1, 0, 0, 0)
     scroll.BackgroundTransparency = 1
-    scroll.ScrollBarThickness = 4
+    scroll.ScrollBarThickness = 3
     scroll.ScrollBarImageColor3 = Theme.AccentDim
     scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
     scroll.AutomaticSize = Enum.AutomaticSize.Y
+    scroll.LayoutOrder = 1
     scroll.Parent = panel
     
-    local layout = createListLayout(scroll, 4)
-    self.settingsLayout = layout
+    local scrollPadding = Instance.new("UIPadding")
+    scrollPadding.PaddingTop = UDim.new(0, 4)
+    scrollPadding.PaddingBottom = UDim.new(0, 4)
+    scrollPadding.PaddingLeft = UDim.new(0, 0)
+    scrollPadding.PaddingRight = UDim.new(0, 0)
+    scrollPadding.Parent = scroll
+    
+    local layout2 = createListLayout(scroll, 3)
+    self.settingsLayout = layout2
     self.settingsScroll = scroll
     
     -- Empty state
-    local empty = createText(scroll, "Select a module to view its settings", 12, Theme.TextMuted, Theme.Font, Enum.TextXAlignment.Center)
+    local empty = createText(scroll, "Select a module to view its settings", 11, Theme.TextMuted, Theme.Font, Enum.TextXAlignment.Center)
     empty.Size = UDim2.new(1, 0, 1, 0)
     empty.Name = "EmptyState"
     self.settingsEmpty = empty
@@ -2364,13 +2399,13 @@ function UI:refreshSettingsPanel()
     
     -- Update toggle
     self.settingsToggleBtn.BackgroundColor3 = mod.Enabled and Theme.ToggleOn or Theme.ToggleOff
-    self.settingsToggleKnob.Position = UDim2.new(mod.Enabled and 1 or 0, mod.Enabled and -18 or 2, 0.5, -8)
+    self.settingsToggleKnob.Position = UDim2.new(mod.Enabled and 1 or 0, mod.Enabled and -16 or 2, 0.5, -7)
     
     self.settingsToggleBtn.MouseButton1Click:Connect(function()
         mod:SetEnabled(not mod.Enabled)
         self.settingsToggleBtn.BackgroundColor3 = mod.Enabled and Theme.ToggleOn or Theme.ToggleOff
         TweenService:Create(self.settingsToggleKnob, Theme.FastTween, {
-            Position = UDim2.new(mod.Enabled and 1 or 0, mod.Enabled and -18 or 2, 0.5, -8)
+            Position = UDim2.new(mod.Enabled and 1 or 0, mod.Enabled and -16 or 2, 0.5, -7)
         }):Play()
         self:refreshModules()
     end)
