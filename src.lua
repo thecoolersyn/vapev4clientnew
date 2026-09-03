@@ -36,42 +36,43 @@ local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 --------------------------------------------------------------------------------
 -- THEME
 --------------------------------------------------------------------------------
+-- Vape V4 Theme
 local Theme = {
     -- Colors
-    Background = Color3.fromRGB(14, 14, 18),
-    Surface = Color3.fromRGB(20, 20, 26),
-    SurfaceLight = Color3.fromRGB(26, 26, 34),
-    SurfaceHover = Color3.fromRGB(32, 32, 42),
-    SurfaceActive = Color3.fromRGB(38, 38, 50),
+    Background = Color3.fromRGB(10, 10, 12),
+    Surface = Color3.fromRGB(18, 18, 22),
+    SurfaceLight = Color3.fromRGB(24, 24, 28),
+    SurfaceHover = Color3.fromRGB(30, 30, 38),
+    SurfaceActive = Color3.fromRGB(36, 36, 44),
     
     Accent = Color3.fromRGB(100, 220, 160),
     AccentDim = Color3.fromRGB(80, 180, 130),
     AccentHover = Color3.fromRGB(120, 240, 180),
     
-    Text = Color3.fromRGB(240, 240, 245),
-    TextSecondary = Color3.fromRGB(170, 170, 185),
-    TextMuted = Color3.fromRGB(110, 110, 125),
+    Text = Color3.fromRGB(235, 235, 240),
+    TextSecondary = Color3.fromRGB(165, 165, 175),
+    TextMuted = Color3.fromRGB(100, 100, 115),
     
-    Border = Color3.fromRGB(35, 35, 45),
-    BorderLight = Color3.fromRGB(50, 50, 65),
+    Border = Color3.fromRGB(30, 30, 38),
+    BorderLight = Color3.fromRGB(45, 45, 58),
     
-    ToggleOff = Color3.fromRGB(50, 50, 62),
+    ToggleOff = Color3.fromRGB(45, 45, 58),
     ToggleOn = Color3.fromRGB(100, 220, 160),
     
-    SliderTrack = Color3.fromRGB(40, 40, 52),
+    SliderTrack = Color3.fromRGB(35, 35, 45),
     SliderFill = Color3.fromRGB(100, 220, 160),
-    SliderHandle = Color3.fromRGB(240, 240, 245),
+    SliderHandle = Color3.fromRGB(235, 235, 240),
     
     Error = Color3.fromRGB(255, 100, 100),
     Success = Color3.fromRGB(100, 220, 160),
     Warning = Color3.fromRGB(255, 200, 100),
     
     -- Dimensions
-    WindowWidth = 1000,
-    WindowHeight = 600,
-    TopBarHeight = 42,
-    SidebarWidth = 190,
-    SettingsPanelWidth = 290,
+    WindowWidth = 1050,
+    WindowHeight = 620,
+    TopBarHeight = 44,
+    SidebarWidth = 180,
+    SettingsPanelWidth = 300,
     
     -- Fonts
     Font = Enum.Font.Gotham,
@@ -1631,25 +1632,26 @@ function UI:createTopBar()
     -- Logo area
     local logo = Instance.new("Frame")
     logo.Name = "Logo"
-    logo.Size = UDim2.new(0, 100, 1, 0)
+    logo.Size = UDim2.new(0, 90, 1, 0)
     logo.Position = UDim2.new(0, 12, 0, 0)
     logo.BackgroundTransparency = 1
     logo.Parent = bar
     
-    local logoText = createText(logo, "IMPULSE", 14, Theme.Text, Theme.FontBold, Enum.TextXAlignment.Left)
+    local logoText = createText(logo, "VAPE", 15, Theme.Text, Theme.FontBold, Enum.TextXAlignment.Left)
     logoText.Size = UDim2.new(1, 0, 1, 0)
+    logoText.Position = UDim2.new(0, 0, 0, 1)
     
     -- Navigation
     local nav = Instance.new("Frame")
     nav.Name = "Navigation"
-    nav.Size = UDim2.new(0, 220, 1, 0)
-    nav.Position = UDim2.new(0, 120, 0, 0)
+    nav.Size = UDim2.new(0, 200, 1, 0)
+    nav.Position = UDim2.new(0, 110, 0, 0)
     nav.BackgroundTransparency = 1
     nav.Parent = bar
     
     local navLayout = Instance.new("UIListLayout")
     navLayout.FillDirection = Enum.FillDirection.Horizontal
-    navLayout.Padding = UDim.new(0, 4)
+    navLayout.Padding = UDim.new(0, 6)
     navLayout.VerticalAlignment = Enum.VerticalAlignment.Center
     navLayout.Parent = nav
     
@@ -1657,7 +1659,7 @@ function UI:createTopBar()
     for _, item in ipairs(navItems) do
         local btn = Instance.new("TextButton")
         btn.Name = item
-        btn.Size = UDim2.new(0, 64, 0, 28)
+        btn.Size = UDim2.new(0, 66, 0, 26)
         btn.BackgroundColor3 = (item == "Modules") and Theme.SurfaceLight or Theme.Surface
         btn.BorderSizePixel = 0
         btn.AutoButtonColor = false
@@ -1683,7 +1685,7 @@ function UI:createTopBar()
     -- Window controls
     local controls = Instance.new("Frame")
     controls.Name = "WindowControls"
-    controls.Size = UDim2.new(0, 100, 1, 0)
+    controls.Size = UDim2.new(0, 120, 1, 0)
     controls.Position = UDim2.new(1, -12, 0, 0)
     controls.BackgroundTransparency = 1
     controls.Parent = bar
@@ -1774,7 +1776,7 @@ function UI:createSidebar()
     header.BackgroundTransparency = 1
     header.Parent = sidebar
     
-    local headerText = createText(header, "CATEGORIES", 10, Theme.TextMuted, Theme.FontBold, Enum.TextXAlignment.Left)
+    local headerText = createText(header, "Modules", 12, Theme.Text, Theme.FontMedium, Enum.TextXAlignment.Left)
     headerText.Size = UDim2.new(1, -16, 1, 0)
     headerText.Position = UDim2.new(0, 12, 0, 0)
     
@@ -2023,7 +2025,7 @@ function UI:createModuleCard(mod, index)
     card.BorderSizePixel = 0
     card.LayoutOrder = index
     card.Parent = self.moduleListScroll
-    createCorner(card, 8)
+    createCorner(card, 6)
     
     -- Accent indicator
     local accent = Instance.new("Frame")
@@ -2248,11 +2250,11 @@ function UI:createSettingsPanel()
     -- Header
     local header = Instance.new("Frame")
     header.Name = "Header"
-    header.Size = UDim2.new(1, 0, 0, 60)
+    header.Size = UDim2.new(1, 0, 0, 64)
     header.BackgroundTransparency = 1
     header.Parent = panel
     
-    local moduleName = createText(header, "", 14, Theme.Text, Theme.FontBold, Enum.TextXAlignment.Left)
+    local moduleName = createText(header, "", 14, Theme.Text, Theme.FontMedium, Enum.TextXAlignment.Left)
     moduleName.Size = UDim2.new(1, -80, 0, 20)
     moduleName.Position = UDim2.new(0, 14, 0, 10)
     self.settingsModuleName = moduleName
@@ -2260,6 +2262,7 @@ function UI:createSettingsPanel()
     local moduleDesc = createText(header, "", 11, Theme.TextMuted, Theme.Font, Enum.TextXAlignment.Left)
     moduleDesc.Size = UDim2.new(1, -14, 0, 14)
     moduleDesc.Position = UDim2.new(0, 14, 0, 32)
+    moduleDesc.TextWrapped = true
     self.settingsModuleDesc = moduleDesc
     
     -- Star button
@@ -2283,7 +2286,7 @@ function UI:createSettingsPanel()
     local toggleBtn = Instance.new("TextButton")
     toggleBtn.Name = "ToggleBtn"
     toggleBtn.Size = UDim2.new(0, 36, 0, 20)
-    toggleBtn.Position = UDim2.new(1, -44, 0, 36)
+    toggleBtn.Position = UDim2.new(1, -44, 0, 38)
     toggleBtn.BackgroundColor3 = Theme.ToggleOff
     toggleBtn.BorderSizePixel = 0
     toggleBtn.AutoButtonColor = false
@@ -2304,8 +2307,8 @@ function UI:createSettingsPanel()
     -- Settings scroll
     local scroll = Instance.new("ScrollingFrame")
     scroll.Name = "SettingsList"
-    scroll.Size = UDim2.new(1, -16, 1, -68)
-    scroll.Position = UDim2.new(0, 8, 0, 64)
+    scroll.Size = UDim2.new(1, -16, 1, -72)
+    scroll.Position = UDim2.new(0, 8, 0, 68)
     scroll.BackgroundTransparency = 1
     scroll.ScrollBarThickness = 4
     scroll.ScrollBarImageColor3 = Theme.AccentDim

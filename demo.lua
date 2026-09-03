@@ -5,11 +5,11 @@
 
 local Impulse
 
--- Load from URL
-if game and game.HttpGet then
-    local url = "https://raw.githubusercontent.com/thecoolersyn/vapev4clientnew/refs/heads/main/src.lua"
-    local ok, content = pcall(game.HttpGet, game, url)
-    if ok and content then
+-- Load from local file
+local success, err = pcall(function()
+    local path = "/Users/syn/Opiumware/workspace/vapev4clientnew/src.lua"
+    if isfile and isfile(path) then
+        local content = readfile(path)
         local fn, err = loadstring(content)
         if fn then
             local ok2, result = pcall(fn)
@@ -22,10 +22,12 @@ if game and game.HttpGet then
             warn("[Impulse] Compile error:", tostring(err))
         end
     else
-        warn("[Impulse] Failed to download from URL")
+        warn("[Impulse] src.lua not found at " .. path)
     end
-else
-    warn("[Impulse] game.HttpGet not available")
+end)
+
+if not Impulse then
+    error("Impulse framework not found")
 end
 
 if not Impulse then
