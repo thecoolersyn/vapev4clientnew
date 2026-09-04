@@ -18,10 +18,12 @@ local KeyCode = EnumSource and EnumSource or Enum.KeyCode
 
 -- Block keybind detection
 local function detectBlockKeybind()
-    local Replion = ReplicatedStorage.Packages:FindFirstChild("Replion")
-    if not Replion then return Enum.KeyCode.Equals end
+    local ok, Replion = pcall(function()
+        return ReplicatedStorage.Packages:FindFirstChild("Replion")
+    end)
+    if not ok or not Replion then return Enum.KeyCode.Equals end
     
-    local ok, mod = pcall(require, Replion)
+    local ok2, mod = pcall(require, Replion)
     if not ok or type(mod) ~= "table" then return Enum.KeyCode.Equals end
     
     local ok2, data = pcall(function()
