@@ -2141,10 +2141,12 @@ function UI:startKeybindCapture(mod, onDone)
     self:showKeybindCaptureOverlay(mod)
     capture.conn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
         if capture.stale then return end
-        if gameProcessed then return end
         if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
         local key = input.KeyCode
         if key == Enum.KeyCode.Unknown then return end
+        -- Escape always cancels the modal, even if the game already
+        -- processed it (Roblox consumes Escape for its own UI)
+        if key ~= Enum.KeyCode.Escape and gameProcessed then return end
         task.defer(function()
             if capture.stale then return end
             capture.stale = true
