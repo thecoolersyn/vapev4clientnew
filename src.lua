@@ -1640,6 +1640,7 @@ function UI.new()
     self.keybindCapture = nil
     self.keybindOverlay = nil
     self.exitConfirmation = nil
+    self.settingsPanelVisible = false
     return self
 end
 
@@ -1666,6 +1667,32 @@ function UI:Init()
     if notif then
         notif:Init(screen)
     end
+    
+    -- Global keybind listener: fires each bound module when its key is pressed.
+    -- Skipped entirely while a keybind capture is in progress so the captured
+    -- key never triggers the module's normal toggle action.
+    self.connections[#self.connections + 1] = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if self.keybindCapture then return end
+        if gameProcessed then return end
+        if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+        local pressed = input.KeyCode
+        if pressed == Enum.KeyCode.Unknown then return end
+        local registry = _getInstance()._registry
+        if not registry then return end
+        for _, mod in pairs(registry.modules) do
+            if mod.Keybind == pressed then
+                mod:SetEnabled(not mod.Enabled)
+                self:notifyKeybindToggle(mod)
+            end
+        end
+    end)
+end
+
+function UI:notifyKeybindToggle(mod)
+    local notif = _getInstance()._notifications
+    if not notif then return end
+    local verb = mod.Enabled and "Enabled" or "Disabled"
+    notif:Notify("Keybind", mod.Name .. " " .. verb, mod.Enabled and "success" or "warning")
 end
 
 function UI:createMainWindow()
@@ -1856,8 +1883,9 @@ function UI:createModulesPage()
     
     -- Sidebar
     self:createSidebar()
-    
-    -- Module list area (full width; no separate settings panel — settings live in cards)
+    -- Right-side settings panel (hidden until a module is selected)
+    self:createSettingsPanel()
+    -- Module list area (resizes when the settings panel opens/closes)
     self:createModuleListArea()
 end
 
@@ -2008,10 +2036,14 @@ end
 function UI:createModuleListArea()
     local area = Instance.new("Frame")
     area.Name = "ModuleListArea"
-    area.Size = UDim2.new(1, -Theme.SidebarWidth, 1, 0)
+    -- Full width when the settings panel is hidden; resized when it opens
+    area.Size = self.settingsPanelVisible
+        and UDim2.new(1, -Theme.SidebarWidth - Theme.SettingsPanelWidth, 1, 0)
+        or UDim2.new(1, -Theme.SidebarWidth, 1, 0)
     area.Position = UDim2.new(0, Theme.SidebarWidth, 0, 0)
     area.BackgroundTransparency = 1
     area.Parent = self.modulesPage
+    self.moduleListArea = area
     
     -- Search bar
     local searchFrame = Instance.new("Frame")
@@ -2225,30 +2257,6 @@ function UI:hideKeybindCaptureOverlay()
     end
 end
 
-function UI:populateCardSettings(mod, settingsArea, card)
-    settingsArea.Visible = true
-    local totalHeight = 16
-    local order = 0
-    local function place(ctrl, height)
-        order = order + 1
-        ctrl.LayoutOrder = order
-        ctrl.Parent = settingsArea
-        totalHeight = totalHeight + height + 3
-    end
-    for _, sName in ipairs(mod._settingOrder) do
-        local setting = mod.Settings[sName]
-        if setting then
-            local info = self:createSettingControl(setting, mod, settingsArea)
-            if info and info.frame then
-                place(info.frame, info.height or 28)
-            end
-        end
-    end
-    totalHeight = math.max(totalHeight - 3, 0)
-    settingsArea.Size = UDim2.new(1, 0, 0, totalHeight)
-    card.Size = UDim2.new(1, 0, 0, 42 + totalHeight)
-end
-
 function UI:createModuleCard(mod, index)
     local card = Instance.new("Frame")
     card.Name = "ModuleCard"
@@ -2257,17 +2265,8 @@ function UI:createModuleCard(mod, index)
     card.BorderSizePixel = 0
     card.LayoutOrder = index
     card.Parent = self.moduleListScroll
-    card.ClipsDescendants = true
-    card:SetAttribute("ModuleName", mod.Name)
     createCorner(card, 6)
-    
-    -- Header row (always visible)
-    local headerRow = Instance.new("Frame")
-    headerRow.Name = "HeaderRow"
-    headerRow.Size = UDim2.new(1, 0, 0, 42)
-    headerRow.BackgroundTransparency = 1
-    headerRow.BorderSizePixel = 0
-    headerRow.Parent = card
+    card:SetAttribute("ModuleName", mod.Name)
     
     -- Accent indicator
     local accent = Instance.new("Frame")
@@ -2276,16 +2275,16 @@ function UI:createModuleCard(mod, index)
     accent.Position = UDim2.new(0, 6, 0, 6)
     accent.BackgroundColor3 = mod.Enabled and Theme.Accent or Theme.Border
     accent.BorderSizePixel = 0
-    accent.Parent = headerRow
+    accent.Parent = card
     createCorner(accent, 2)
     
     -- Module name
-    local nameLabel = createText(headerRow, mod.Name, 12, Theme.Text, Theme.FontMedium, Enum.TextXAlignment.Left)
+    local nameLabel = createText(card, mod.Name, 12, Theme.Text, Theme.FontMedium, Enum.TextXAlignment.Left)
     nameLabel.Size = UDim2.new(0.38, 0, 0, 16)
     nameLabel.Position = UDim2.new(0, 16, 0, 7)
     
     -- Description
-    local descLabel = createText(headerRow, mod.Description, 10, Theme.TextMuted, Theme.Font, Enum.TextXAlignment.Left)
+    local descLabel = createText(card, mod.Description, 10, Theme.TextMuted, Theme.Font, Enum.TextXAlignment.Left)
     descLabel.Size = UDim2.new(0.55, -90, 0, 12)
     descLabel.Position = UDim2.new(0, 16, 0, 25)
     descLabel.TextTruncate = Enum.TextTruncate.AtEnd
@@ -2293,53 +2292,23 @@ function UI:createModuleCard(mod, index)
     -- Right side controls
     local rightX = 1
     
-    -- Keybind indicator (single source of truth: mod.Keybind)
-    local kbIndicator = nil
-    local kbLabel = nil
+    -- Keybind indicator
     if mod.Keybind then
         local kb = Instance.new("Frame")
-        kb.Name = "KeybindIndicator"
         kb.Size = UDim2.new(0, 22, 0, 16)
         kb.Position = UDim2.new(1, -rightX - 22, 0.5, -8)
         kb.BackgroundColor3 = Theme.SurfaceLight
         kb.BorderSizePixel = 0
-        kb.Parent = headerRow
+        kb.Parent = card
         createCorner(kb, 4)
         
-        kbLabel = createText(kb, tostring(mod.Keybind.Name or mod.Keybind), 9, Theme.TextSecondary, Theme.FontMedium, Enum.TextXAlignment.Center)
+        local kbLabel = createText(kb, tostring(mod.Keybind.Name or mod.Keybind), 9, Theme.TextSecondary, Theme.FontMedium, Enum.TextXAlignment.Center)
         kbLabel.Size = UDim2.new(1, 0, 1, 0)
-        kbIndicator = kb
         
         rightX = rightX + 26
     end
     
-    local function refreshKeybindIndicator()
-        if mod.Keybind then
-            if not kbIndicator then
-                local kb = Instance.new("Frame")
-                kb.Name = "KeybindIndicator"
-                kb.Size = UDim2.new(0, 22, 0, 16)
-                kb.Position = UDim2.new(1, -rightX - 22, 0.5, -8)
-                kb.BackgroundColor3 = Theme.SurfaceLight
-                kb.BorderSizePixel = 0
-                kb.Parent = headerRow
-                createCorner(kb, 4)
-                kbLabel = createText(kb, tostring(mod.Keybind.Name or mod.Keybind), 9, Theme.TextSecondary, Theme.FontMedium, Enum.TextXAlignment.Center)
-                kbLabel.Size = UDim2.new(1, 0, 1, 0)
-                kbIndicator = kb
-            else
-                kbLabel.Text = tostring(mod.Keybind.Name or mod.Keybind)
-            end
-        else
-            if kbIndicator then
-                kbIndicator:Destroy()
-                kbIndicator = nil
-                kbLabel = nil
-            end
-        end
-    end
-    
-    -- Toggle (ONE enable control per module)
+    -- Toggle (single enable control)
     local toggle = Instance.new("TextButton")
     toggle.Name = "Toggle"
     toggle.Size = UDim2.new(0, 30, 0, 16)
@@ -2348,7 +2317,7 @@ function UI:createModuleCard(mod, index)
     toggle.BorderSizePixel = 0
     toggle.AutoButtonColor = false
     toggle.Text = ""
-    toggle.Parent = headerRow
+    toggle.Parent = card
     createCorner(toggle, 8)
     
     local knob = Instance.new("Frame")
@@ -2380,11 +2349,11 @@ function UI:createModuleCard(mod, index)
     menuBtn.Name = "MenuBtn"
     menuBtn.Size = UDim2.new(0, 20, 0, 20)
     menuBtn.Position = UDim2.new(1, -rightX - 20, 0.5, -10)
-    menuBtn.BackgroundColor3 = (mod == self.selectedModule) and Theme.SurfaceLight or Theme.Surface
+    menuBtn.BackgroundColor3 = Theme.Surface
     menuBtn.BorderSizePixel = 0
     menuBtn.AutoButtonColor = false
     menuBtn.Text = ""
-    menuBtn.Parent = headerRow
+    menuBtn.Parent = card
     createCorner(menuBtn, 5)
     
     local menuIcon = Icons.Icon("MoreVertical", 11)
@@ -2396,35 +2365,8 @@ function UI:createModuleCard(mod, index)
         self:showModuleContextMenu(mod, menuBtn)
     end)
     
-    -- Settings area (hidden by default, shown only when selected)
-    local settingsArea = Instance.new("Frame")
-    settingsArea.Name = "SettingsArea"
-    settingsArea.Size = UDim2.new(1, 0, 0, 0)
-    settingsArea.Position = UDim2.new(0, 0, 0, 42)
-    settingsArea.BackgroundTransparency = 1
-    settingsArea.BorderSizePixel = 0
-    settingsArea.Visible = false
-    settingsArea.Parent = card
-    
-    local settingsLayout = Instance.new("UIListLayout")
-    settingsLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    settingsLayout.Padding = UDim.new(0, 3)
-    settingsLayout.Parent = settingsArea
-    
-    local settingsPadding = Instance.new("UIPadding")
-    settingsPadding.PaddingTop = UDim.new(0, 6)
-    settingsPadding.PaddingBottom = UDim.new(0, 10)
-    settingsPadding.PaddingLeft = UDim.new(0, 14)
-    settingsPadding.PaddingRight = UDim.new(0, 10)
-    settingsPadding.Parent = settingsArea
-    
-    local isSelected = (mod == self.selectedModule)
-    if isSelected then
-        self:populateCardSettings(mod, settingsArea, card)
-    end
-    
-    -- Click header to select (toggle selection)
-    headerRow.InputBegan:Connect(function(input)
+    -- Click to select / deselect (opens or closes the RIGHT-side settings panel)
+    card.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             if self:isKeybindCapturing() then return end
             if self.selectedModule == mod then
@@ -2433,6 +2375,7 @@ function UI:createModuleCard(mod, index)
                 self.selectedModule = mod
             end
             self:refreshModules()
+            self:refreshSettingsPanel()
         end
     end)
     
@@ -2447,7 +2390,6 @@ function UI:createModuleCard(mod, index)
             TweenService:Create(card, Theme.FastTween, {BackgroundColor3 = Theme.Surface}):Play()
         end
     end)
-    return card
 end
 
 function UI:showModuleContextMenu(mod, parent)
@@ -2520,6 +2462,7 @@ function UI:showModuleContextMenu(mod, parent)
                 self.selectedModule = mod
             end
             self:refreshModules()
+            self:refreshSettingsPanel()
             menu:Destroy()
             self.contextMenu = nil
         end)
@@ -2556,32 +2499,155 @@ function UI:showModuleContextMenu(mod, parent)
 end
 
 function UI:createSettingsPanel()
-    -- Settings now live inline in each module card. Keep a minimal panel
-    -- reference so downstream code that checks self.settingsPanel doesn't error.
-    self.settingsPanel = Instance.new("Frame")
-    self.settingsPanel.Name = "SettingsPanel"
-    self.settingsPanel.Size = UDim2.new(0, 0, 0, 0)
-    self.settingsPanel.BackgroundTransparency = 1
-    self.settingsPanel.BorderSizePixel = 0
-    self.settingsPanel.Parent = self.modulesPage
-    self.settingsScroll = self.settingsPanel
-    self.settingsEmpty = Instance.new("Frame", self.settingsPanel)
-    self.settingsEmpty.Visible = false
+    -- Dedicated RIGHT-side settings panel. Hidden until a module is selected;
+    -- anchored to the right edge of the modules page so it moves with the UI.
+    local panel = Instance.new("Frame")
+    panel.Name = "SettingsPanel"
+    panel.Size = UDim2.new(0, Theme.SettingsPanelWidth, 1, 0)
+    panel.Position = UDim2.new(1, -Theme.SettingsPanelWidth, 0, 0)
+    panel.BackgroundColor3 = Theme.Surface
+    panel.BorderSizePixel = 0
+    panel.Visible = false
+    panel.ZIndex = 5
+    panel.Parent = self.modulesPage
+    createStroke(panel, Theme.Border, 1)
+    self.settingsPanel = panel
+    self.settingsPanelVisible = false
+    
+    local padding = Instance.new("UIPadding")
+    padding.PaddingTop = UDim.new(0, 12)
+    padding.PaddingBottom = UDim.new(0, 12)
+    padding.PaddingLeft = UDim.new(0, 12)
+    padding.PaddingRight = UDim.new(0, 12)
+    padding.Parent = panel
+    
+    -- Header: module name + description + favorite star
+    local header = Instance.new("Frame")
+    header.Name = "Header"
+    header.Size = UDim2.new(1, 0, 0, 56)
+    header.BackgroundTransparency = 1
+    header.Parent = panel
+    
+    local moduleName = createText(header, "", 13, Theme.Text, Theme.FontMedium, Enum.TextXAlignment.Left)
+    moduleName.Size = UDim2.new(1, -34, 0, 18)
+    moduleName.Position = UDim2.new(0, 0, 0, 6)
+    moduleName.TextTruncate = Enum.TextTruncate.AtEnd
+    self.settingsModuleName = moduleName
+    
+    local moduleDesc = createText(header, "", 10, Theme.TextMuted, Theme.Font, Enum.TextXAlignment.Left)
+    moduleDesc.Size = UDim2.new(1, 0, 0, 26)
+    moduleDesc.Position = UDim2.new(0, 0, 0, 26)
+    moduleDesc.TextWrapped = true
+    self.settingsModuleDesc = moduleDesc
+    
+    -- Star (favorite) button
+    local starBtn = Instance.new("TextButton")
+    starBtn.Name = "StarBtn"
+    starBtn.Size = UDim2.new(0, 24, 0, 24)
+    starBtn.Position = UDim2.new(1, -24, 0, 4)
+    starBtn.BackgroundTransparency = 1
+    starBtn.AutoButtonColor = false
+    starBtn.Text = ""
+    starBtn.Parent = header
+    self.settingsStarBtn = starBtn
+    
+    local starIcon = Icons.Icon("Star", 15)
+    starIcon.Size = UDim2.new(0, 15, 0, 15)
+    starIcon.Position = UDim2.new(0.5, -7, 0.5, -7)
+    starIcon.Parent = starBtn
+    self.settingsStarIcon = starIcon
+    
+    starBtn.MouseButton1Click:Connect(function()
+        local current = self.selectedModule
+        if current then
+            current:SetFavorite(not current.Favorite)
+            self:refreshSettingsPanel()
+            self:refreshModules()
+        end
+    end)
+    
+    -- Settings scroll (contains ONLY the selected module's controls)
+    local scroll = Instance.new("ScrollingFrame")
+    scroll.Name = "SettingsList"
+    scroll.Size = UDim2.new(1, 0, 1, -60)
+    scroll.Position = UDim2.new(0, 0, 0, 60)
+    scroll.BackgroundTransparency = 1
+    scroll.BorderSizePixel = 0
+    scroll.ScrollBarThickness = 3
+    scroll.ScrollBarImageColor3 = Theme.AccentDim
+    scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+    scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    scroll.Parent = panel
+    
+    createListLayout(scroll, 4)
+    self.settingsScroll = scroll
+end
+
+-- Opens/closes the right-side panel and resizes the module list area so the
+-- layout always reflects the panel state. The panel is anchored to the right
+-- edge of the modules page (relative UDim2), so it moves with the main UI.
+function UI:setSettingsPanelVisible(visible)
+    self.settingsPanelVisible = visible and true or false
+    if self.settingsPanel then
+        self.settingsPanel.Visible = self.settingsPanelVisible
+    end
+    if self.moduleListArea then
+        if self.settingsPanelVisible then
+            self.moduleListArea.Size = UDim2.new(1, -Theme.SidebarWidth - Theme.SettingsPanelWidth, 1, 0)
+        else
+            self.moduleListArea.Size = UDim2.new(1, -Theme.SidebarWidth, 1, 0)
+        end
+    end
 end
 
 function UI:refreshSettingsPanel()
-    -- No-op: settings are populated inline by refreshModules/populateCardSettings.
-    -- RefreshModules is the single source of truth for card state.
+    local panel = self.settingsPanel
+    if not panel or not self.settingsScroll then return end
+    
+    -- Clear existing controls (previous module's settings must not linger)
+    for _, child in ipairs(self.settingsScroll:GetChildren()) do
+        if child:IsA("Frame") then
+            child:Destroy()
+        end
+    end
+    
+    local mod = self.selectedModule
+    if not mod then
+        self:setSettingsPanelVisible(false)
+        return
+    end
+    
+    self.settingsModuleName.Text = mod.Name
+    self.settingsModuleDesc.Text = mod.Description
+    
+    -- Update star icon
+    if self.settingsStarIcon then
+        self.settingsStarIcon:Destroy()
+    end
+    local starIcon = mod.Favorite and Icons.Icon("StarFilled", 15, Theme.Accent) or Icons.Icon("Star", 15)
+    starIcon.Size = UDim2.new(0, 15, 0, 15)
+    starIcon.Position = UDim2.new(0.5, -7, 0.5, -7)
+    starIcon.Parent = self.settingsStarBtn
+    self.settingsStarIcon = starIcon
+    
+    -- Build the selected module's controls
+    for _, sName in ipairs(mod._settingOrder) do
+        local setting = mod.Settings[sName]
+        if setting then
+            self:createSettingControl(setting, mod, self.settingsScroll)
+        end
+    end
+    
+    self:setSettingsPanelVisible(true)
 end
 
 function UI:createSettingControl(setting, mod, container)
     local host = container or self.settingsScroll
     local ctrl = nil
-    local height = 28
     
     local lowerName = (setting.Name or ""):lower()
     if lowerName == "enabled" or lowerName == "disabled" or lowerName == "enable" or lowerName == "disable" then
-        -- The module header already provides the ONE enable toggle
+        -- The module card header already provides the ONE enable toggle
         return nil
     end
     
@@ -2590,7 +2656,6 @@ function UI:createSettingControl(setting, mod, container)
             setting.Value = val
             if setting.Callback then safeCall(setting.Callback, val) end
         end)
-        height = 28
         
     elseif setting.Type == "Slider" then
         ctrl = Controls.CreateSlider(host, setting.Name, {
@@ -2599,7 +2664,6 @@ function UI:createSettingControl(setting, mod, container)
             setting.Value = val
             if setting.Callback then safeCall(setting.Callback, val) end
         end)
-        height = 36
         
     elseif setting.Type == "Dropdown" then
         ctrl = Controls.CreateDropdown(host, setting.Name, {
@@ -2608,7 +2672,6 @@ function UI:createSettingControl(setting, mod, container)
             setting.Value = val
             if setting.Callback then safeCall(setting.Callback, val) end
         end, self.modulesPage)
-        height = 28
         
     elseif setting.Type == "MultiDropdown" then
         ctrl = Controls.CreateMultiDropdown(host, setting.Name, {
@@ -2617,7 +2680,6 @@ function UI:createSettingControl(setting, mod, container)
             setting.Value = vals
             if setting.Callback then safeCall(setting.Callback, vals) end
         end, self.modulesPage)
-        height = 28
         
     elseif setting.Type == "Keybind" then
         ctrl = Controls.CreateKeybind(host, setting.Name, {
@@ -2627,7 +2689,6 @@ function UI:createSettingControl(setting, mod, container)
             if val then mod.Keybind = val end
             if setting.Callback then safeCall(setting.Callback, val) end
         end, self.modulesPage)
-        height = 28
         
     elseif setting.Type == "ColorPicker" then
         ctrl = Controls.CreateColorPicker(host, setting.Name, {
@@ -2636,13 +2697,11 @@ function UI:createSettingControl(setting, mod, container)
             setting.Value = val
             if setting.Callback then safeCall(setting.Callback, val) end
         end, self.modulesPage)
-        height = 28
         
     elseif setting.Type == "Button" then
         ctrl = Controls.CreateButton(host, setting.Name, function()
             if setting.Callback then safeCall(setting.Callback) end
         end)
-        height = 28
         
     elseif setting.Type == "Textbox" then
         ctrl = Controls.CreateTextbox(host, setting.Name, {
@@ -2651,21 +2710,15 @@ function UI:createSettingControl(setting, mod, container)
             setting.Value = val
             if setting.Callback then safeCall(setting.Callback, val) end
         end)
-        height = 28
         
     elseif setting.Type == "Section" then
         ctrl = Controls.CreateSection(host, setting.Name)
-        height = 20
         
     elseif setting.Type == "Label" then
         ctrl = Controls.CreateLabel(host, setting.Name)
-        height = 18
     end
     
-    if ctrl then
-        return {frame = ctrl, height = height}
-    end
-    return nil
+    return ctrl
 end
 
 function UI:createConfigPage()
@@ -3054,11 +3107,14 @@ function UI:toggleMinimized()
     -- Keep the button icon in sync with the actual UI state
     if self.minimizeIcon then
         self.minimizeIcon:Destroy()
-        local icon = Icons.Icon(self.isMinimized and "Plus" or "Minus", 14)
+        local iconName = self.isMinimized and "Plus" or "Minus"
+        local icon = Icons.Icon(iconName, 14)
+        icon.Name = "MinimizeIcon"
         icon.Size = UDim2.new(0, 14, 0, 14)
         icon.Position = UDim2.new(0.5, -7, 0.5, -7)
         icon.Parent = self.minimizeIcon.Parent
         self.minimizeIcon = icon
+        self.minimizeIconName = iconName
     end
 end
 
