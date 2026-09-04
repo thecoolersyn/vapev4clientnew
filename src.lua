@@ -435,12 +435,23 @@ end
 --------------------------------------------------------------------------------
 -- NOTIFICATION SERVICE
 --------------------------------------------------------------------------------
+-- Notifications live in a dedicated LEFT-side area of the screen (bottom-left,
+-- own ScreenGui so they never inherit the main window's position). Cards slide
+-- in from the LEFT, slide back out when they expire, and the stack smoothly
+-- repositions whenever a notification is added or removed.
 local NotificationService = {}
 NotificationService.__index = NotificationService
 
+local NOTIF_WIDTH = 280
+local NOTIF_HEIGHT = 60
+local NOTIF_GAP = 8
+local NOTIF_MARGIN = 20
+local NOTIF_SLIDE = 60  -- extra distance past the card edge when off-screen
+local NOTIF_MAX = 5
+
 function NotificationService.new()
     local self = setmetatable({}, NotificationService)
-    self.notifications = {}
+    self.notifications = {}  -- ordered oldest -> newest (bottom -> top)
     self.container = nil
     return self
 end
@@ -451,63 +462,93 @@ function NotificationService:Init(parent)
     screen.ResetOnSpawn = false
     screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     screen.Parent = parent or PlayerGui
-    
+
+    -- Dedicated LEFT-side area: anchored to the bottom-left corner.
     local container = Instance.new("Frame")
     container.Name = "Container"
-    container.Size = UDim2.new(0, 280, 1, -40)
-    container.Position = UDim2.new(1, -290, 0, 20)
+    container.AnchorPoint = Vector2.new(0, 1)
+    container.Size = UDim2.new(0, NOTIF_WIDTH, 0, 0)
+    container.Position = UDim2.new(0, NOTIF_MARGIN, 1, -NOTIF_MARGIN)
     container.BackgroundTransparency = 1
     container.Parent = screen
-    
-    local layout = Instance.new("UIListLayout")
-    layout.SortOrder = Enum.SortOrder.LayoutOrder
-    layout.VerticalAlignment = Enum.VerticalAlignment.Bottom
-    layout.Padding = UDim.new(0, 8)
-    layout.Parent = container
-    
+
     self.container = container
     self.screen = screen
 end
 
+-- Smoothly moves every notification into its stacked slot (oldest at the
+-- bottom). Called after any add/remove so the stack never teleports.
+function NotificationService:_relayout(animate)
+    local offset = 0
+    for _, card in ipairs(self.notifications) do
+        local target = UDim2.new(0, 0, 1, -(offset + NOTIF_HEIGHT))
+        if animate then
+            TweenService:Create(card, Theme.FastTween, {Position = target}):Play()
+        else
+            card.Position = target
+        end
+        offset = offset + NOTIF_HEIGHT + NOTIF_GAP
+    end
+end
+
+function NotificationService:_remove(card)
+    for i, n in ipairs(self.notifications) do
+        if n == card then
+            table.remove(self.notifications, i)
+            break
+        end
+    end
+    if card.Parent then
+        card:Destroy()
+    end
+    self:_relayout(true)
+end
+
 function NotificationService:Notify(title, message, notifType)
     if not self.container then self:Init() end
-    
+
     notifType = notifType or "info"
     local color = Theme.Accent
     if notifType == "error" then color = Theme.Error
     elseif notifType == "warning" then color = Theme.Warning
     elseif notifType == "success" then color = Theme.Success end
-    
-    local card = Instance.new("Frame")
+
+    -- Cap the stack so it never grows past the screen edge
+    while #self.notifications >= NOTIF_MAX do
+        self:_remove(self.notifications[1])
+    end
+
+    -- CanvasGroup so the entire card (background, stroke, text) fades as one
+    local card = Instance.new("CanvasGroup")
     card.Name = "Notif"
-    card.Size = UDim2.new(1, 0, 0, 60)
+    card.AnchorPoint = Vector2.new(0, 1)
+    card.Size = UDim2.new(0, NOTIF_WIDTH, 0, NOTIF_HEIGHT)
     card.BackgroundColor3 = Theme.Surface
     card.BorderSizePixel = 0
-    card.BackgroundTransparency = 1
-    card.LayoutOrder = #self.notifications + 1
+    card.GroupTransparency = 1
     card.Parent = self.container
-    
+
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 8)
     corner.Parent = card
-    
+
     local stroke = Instance.new("UIStroke")
     stroke.Color = color
     stroke.Transparency = 0.5
     stroke.Thickness = 1
     stroke.Parent = card
-    
+
     local accent = Instance.new("Frame")
     accent.Size = UDim2.new(0, 3, 1, -16)
     accent.Position = UDim2.new(0, 6, 0, 8)
     accent.BackgroundColor3 = color
     accent.BorderSizePixel = 0
     accent.Parent = card
-    
+
     local ac = Instance.new("UICorner")
     ac.CornerRadius = UDim.new(0, 2)
     ac.Parent = accent
-    
+
     local titleLabel = Instance.new("TextLabel")
     titleLabel.Size = UDim2.new(1, -24, 0, 18)
     titleLabel.Position = UDim2.new(0, 16, 0, 10)
@@ -518,7 +559,7 @@ function NotificationService:Notify(title, message, notifType)
     titleLabel.Font = Theme.FontMedium
     titleLabel.TextXAlignment = Enum.TextXAlignment.Left
     titleLabel.Parent = card
-    
+
     local msgLabel = Instance.new("TextLabel")
     msgLabel.Size = UDim2.new(1, -24, 0, 16)
     msgLabel.Position = UDim2.new(0, 16, 0, 30)
@@ -529,34 +570,29 @@ function NotificationService:Notify(title, message, notifType)
     msgLabel.Font = Theme.Font
     msgLabel.TextXAlignment = Enum.TextXAlignment.Left
     msgLabel.Parent = card
-    
-    -- Animate in
-    card.Position = UDim2.new(1, 300, 0, 0)
-    local tweenIn = TweenService:Create(card, Theme.FastTween, {
-        BackgroundTransparency = 0,
-        Position = UDim2.new(0, 0, 0, 0)
-    })
-    tweenIn:Play()
-    
+
+    -- Stack into place, then slide in from the LEFT
     self.notifications[#self.notifications + 1] = card
-    
-    -- Auto remove
+    self:_relayout(false)
+    local slotY = card.Position.Y.Offset
+    card.Position = UDim2.new(0, -(NOTIF_WIDTH + NOTIF_SLIDE), 1, slotY)
+    TweenService:Create(card, Theme.FastTween, {
+        GroupTransparency = 0,
+        Position = UDim2.new(0, 0, 1, slotY)
+    }):Play()
+
+    -- Auto remove: slide out toward the LEFT, destroy only after the tween
     task.delay(3.5, function()
-        if card and card.Parent then
-            local tweenOut = TweenService:Create(card, Theme.FastTween, {
-                BackgroundTransparency = 1,
-                Position = UDim2.new(1, 300, 0, 0)
-            })
-            tweenOut:Play()
-            tweenOut.Completed:Wait()
-            if card then card:Destroy() end
-        end
-        for i, n in ipairs(self.notifications) do
-            if n == card then
-                table.remove(self.notifications, i)
-                break
-            end
-        end
+        if not card.Parent then return end
+        local exitY = card.Position.Y.Offset
+        local tweenOut = TweenService:Create(card, Theme.FastTween, {
+            GroupTransparency = 1,
+            Position = UDim2.new(0, -(NOTIF_WIDTH + NOTIF_SLIDE), 1, exitY)
+        })
+        tweenOut:Play()
+        tweenOut.Completed:Once(function()
+            self:_remove(card)
+        end)
     end)
 end
 
@@ -624,6 +660,11 @@ local function anchorPopup(popup, anchor, offsetX, offsetY)
     local function updatePosition()
         if not popup.Parent or not anchor.Parent then
             return false
+        end
+        -- Persistent popups (e.g. the color picker) stay parented while
+        -- hidden; skip position work until they are shown again.
+        if popup.Visible == false then
+            return true
         end
         local host = popup.Parent
         local anchorPos = anchor.AbsolutePosition
@@ -1057,86 +1098,357 @@ end
 
 function Controls.CreateColorPicker(parent, name, config, callback, popupHost)
     local default = config.Default or Color3.fromRGB(255, 255, 255)
-    local value = default
-    
+    local confirmed = default  -- last applied color
+    local tempH, tempS, tempV = confirmed:ToHSV()
+    local pickerOpen = false
+    local pickerSeq = 0  -- guard against stale open/close races
+    local draggingWheel = false
+    local draggingValue = false
+
+    local WHEEL_R = 72          -- wheel outer radius in px
+    local INNER_R = 18          -- hole in center (pure white area)
+    local RINGS = 5
+    local SEGS = 48
+    local POPUP_W, POPUP_H = 200, 280
+
     local container = Instance.new("Frame")
     container.Name = "ColorPicker_" .. name
     container.Size = UDim2.new(1, 0, 0, 28)
     container.BackgroundTransparency = 1
     container.Parent = parent
-    
+
     local label = createText(container, name, 11, Theme.TextSecondary, Theme.Font)
     label.Size = UDim2.new(0.6, 0, 1, 0)
-    
+
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0, 32, 0, 18)
     btn.Position = UDim2.new(1, -32, 0.5, -9)
-    btn.BackgroundColor3 = value
+    btn.BackgroundColor3 = confirmed
     btn.BorderSizePixel = 0
     btn.AutoButtonColor = false
     btn.Text = ""
     btn.Parent = container
     createCorner(btn, 5)
     createStroke(btn, Theme.BorderLight, 1)
-    
-    local pickerOpen = false
-    local pickerFrame = nil
-    
-    local function closePicker()
-        if pickerFrame then
-            pickerFrame:Destroy()
-            pickerFrame = nil
+
+    -- ─── pickerFrame (persistent, created once, fades in/out) ───────────
+    local pickerFrame = Instance.new("CanvasGroup")
+    pickerFrame.Name = "ColorPickerPopup"
+    pickerFrame.Size = UDim2.new(0, POPUP_W, 0, POPUP_H)
+    pickerFrame.BackgroundColor3 = Theme.SurfaceLight
+    pickerFrame.BorderSizePixel = 0
+    pickerFrame.GroupTransparency = 1
+    pickerFrame.Visible = false
+    pickerFrame.ZIndex = 100
+    pickerFrame.Parent = popupHost or container.Parent.Parent.Parent
+    createCorner(pickerFrame, 8)
+    createStroke(pickerFrame, Theme.Border, 1)
+    anchorPopup(pickerFrame, btn, -(WHEEL_R + 64), 20)
+
+    -- ─── COLOR WHEEL (hue + saturation ring) ────────────────────────────
+    local wheelOrigin = Vector2.new(POPUP_W / 2, WHEEL_R + 10)  -- center of wheel area
+    local indicatorAngle = 0
+    local indicatorRadius = 0
+
+    for j = 1, RINGS do
+        local sat = (j - 0.5) / RINGS
+        local r = INNER_R + (WHEEL_R - INNER_R) * (j - 0.5) / RINGS
+        for i = 1, SEGS do
+            local hue = (i - 0.5) / SEGS
+            local angleRad = math.pi * 2 * (i - 0.5) / SEGS
+            local segLen = 2 * math.pi * r / SEGS + 1
+            local segH = (WHEEL_R - INNER_R) / RINGS + 2
+
+            local seg = Instance.new("Frame")
+            seg.BackgroundColor3 = Color3.fromHSV(hue, sat, 1)
+            seg.BorderSizePixel = 0
+            seg.Size = UDim2.new(0, segLen, 0, segH)
+            seg.AnchorPoint = Vector2.new(0.5, 0.5)
+            seg.Rotation = math.deg(angleRad) + 90
+            seg.Position = UDim2.new(0, wheelOrigin.X + r * math.cos(angleRad), 0, wheelOrigin.Y + r * math.sin(angleRad))
+            seg.Parent = pickerFrame
+            createCorner(seg, 3)
         end
-        pickerOpen = false
     end
-    
-    local function openPicker()
-        if pickerOpen then closePicker() return end
+    -- White center disc
+    local center = Instance.new("Frame")
+    center.Size = UDim2.new(0, INNER_R * 2, 0, INNER_R * 2)
+    center.Position = UDim2.new(0, wheelOrigin.X, 0, wheelOrigin.Y)
+    center.AnchorPoint = Vector2.new(0.5, 0.5)
+    center.BackgroundColor3 = Color3.fromHSV(0, 0, 1)
+    center.BorderSizePixel = 0
+    center.Parent = pickerFrame
+    createCorner(center, INNER_R)
+
+    -- Wheel interaction area (transparent hit-test layer)
+    local wheelBtn = Instance.new("TextButton")
+    wheelBtn.Size = UDim2.new(0, WHEEL_R * 2 + 20, 0, WHEEL_R * 2 + 20)
+    wheelBtn.Position = UDim2.new(0, wheelOrigin.X, 0, wheelOrigin.Y)
+    wheelBtn.AnchorPoint = Vector2.new(0.5, 0.5)
+    wheelBtn.BackgroundTransparency = 1
+    wheelBtn.Text = ""
+    wheelBtn.ZIndex = 5
+    wheelBtn.Parent = pickerFrame
+
+    local wheelIndicator = Instance.new("Frame")
+    wheelIndicator.Size = UDim2.new(0, 14, 0, 14)
+    wheelIndicator.AnchorPoint = Vector2.new(0.5, 0.5)
+    wheelIndicator.BackgroundColor3 = Color3.new(1, 1, 1)
+    wheelIndicator.BorderSizePixel = 0
+    wheelIndicator.ZIndex = 10
+    wheelIndicator.Parent = pickerFrame
+    createCorner(wheelIndicator, 7)
+    local wheelStroke = Instance.new("UIStroke", wheelIndicator)
+    wheelStroke.Color = Theme.Background
+    wheelStroke.Thickness = 2
+
+    -- ─── VALUE BAR ──────────────────────────────────────────────────────
+    local barW = 140
+    local barH = 12
+    local barX = (POPUP_W - barW) / 2
+    local barY = WHEEL_R * 2 + 28
+
+    local valueBar = Instance.new("Frame")
+    valueBar.Size = UDim2.new(0, barW, 0, barH)
+    valueBar.Position = UDim2.new(0, barX, 0, barY)
+    valueBar.BorderSizePixel = 0
+    valueBar.Parent = pickerFrame
+    createCorner(valueBar, 6)
+
+    local valueGrad = Instance.new("UIGradient")
+    valueGrad.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.new(0, 0, 0)),
+        ColorSequenceKeypoint.new(1, Color3.new(1, 1, 1)),
+    })
+    valueGrad.Parent = valueBar
+    createStroke(valueBar, Theme.Border, 1)
+
+    local valueHandle = Instance.new("Frame")
+    valueHandle.Size = UDim2.new(0, 14, 0, 18)
+    valueHandle.AnchorPoint = Vector2.new(0.5, 0.5)
+    valueHandle.Position = UDim2.new(1, 0, 0.5, 0)
+    valueHandle.BackgroundColor3 = Color3.new(1, 1, 1)
+    valueHandle.BorderSizePixel = 0
+    valueHandle.ZIndex = 10
+    valueHandle.Parent = valueBar
+    createCorner(valueHandle, 4)
+    local vStroke = Instance.new("UIStroke", valueHandle)
+    vStroke.Color = Theme.Background
+    vStroke.Thickness = 2
+
+    local valueBtn = Instance.new("TextButton")
+    valueBtn.Size = UDim2.new(1, 0, 1, 6)
+    valueBtn.Position = UDim2.new(0, 0, 0, -3)
+    valueBtn.BackgroundTransparency = 1
+    valueBtn.Text = ""
+    valueBtn.ZIndex = 5
+    valueBtn.Parent = valueBar
+
+    -- ─── LIVE PREVIEW SWATCH ────────────────────────────────────────────
+    local preview = Instance.new("Frame")
+    preview.Size = UDim2.new(0, 18, 0, 18)
+    preview.Position = UDim2.new(0, 10, 0, barY + barH + 10)
+    preview.BackgroundColor3 = confirmed
+    preview.BorderSizePixel = 0
+    preview.Parent = pickerFrame
+    createCorner(preview, 4)
+    createStroke(preview, Theme.Border, 1)
+
+    -- ─── X / ✓ BUTTONS ─────────────────────────────────────────────────
+    local btnH = 26
+    local btnW = 36
+    local btnY = barY + barH + 10
+
+    local xBtn = Instance.new("TextButton")
+    xBtn.Size = UDim2.new(0, btnW, 0, btnH)
+    xBtn.Position = UDim2.new(1, -btnW * 2 - 12, 0, btnY + 6)
+    xBtn.BackgroundColor3 = Theme.Surface
+    xBtn.Text = "X"
+    xBtn.TextColor3 = Theme.TextSecondary
+    xBtn.TextSize = 12
+    xBtn.Font = Theme.FontMedium
+    xBtn.ZIndex = 5
+    xBtn.Parent = pickerFrame
+    createCorner(xBtn, 6)
+    createStroke(xBtn, Theme.Border, 1)
+
+    local okBtn = Instance.new("TextButton")
+    okBtn.Size = UDim2.new(0, btnW, 0, btnH)
+    okBtn.Position = UDim2.new(1, -btnW - 10, 0, btnY + 6)
+    okBtn.BackgroundColor3 = Theme.Accent
+    okBtn.Text = "✓"
+    okBtn.TextColor3 = Color3.new(0, 0, 0)
+    okBtn.TextSize = 13
+    okBtn.Font = Theme.FontMedium
+    okBtn.ZIndex = 5
+    okBtn.Parent = pickerFrame
+    createCorner(okBtn, 6)
+
+    -- ─── INTERNAL HELPERS ───────────────────────────────────────────────
+    local function updateFromHueSat()
+        local tempColor = Color3.fromHSV(tempH, tempS, tempV)
+        preview.BackgroundColor3 = tempColor
+        pickerFrame:SetAttribute("TempHue", tempH)
+        pickerFrame:SetAttribute("TempSat", tempS)
+        pickerFrame:SetAttribute("TempValue", tempV)
+        -- Update indicator position on the wheel
+        local pos = wheelOrigin + Vector2.new(
+            tempS * WHEEL_R * math.cos(tempH * math.pi * 2),
+            tempS * WHEEL_R * math.sin(tempH * math.pi * 2)
+        )
+        wheelIndicator.Position = UDim2.new(0, pos.X, 0, pos.Y)
+        -- Update value bar handle
+        valueHandle.Position = UDim2.new(tempV, -0, 0.5, 0)
+    end
+
+    local function initFromHSV()
+        local function restore()
+            tempH, tempS, tempV = confirmed:ToHSV()
+            updateFromHueSat()
+        end
+        restore()
+    end
+
+    -- ─── WHEEL DRAG ────────────────────────────────────────────────────
+    local function handleWheelUpdate(mouseX, mouseY)
+        local centerAbs = wheelBtn.AbsolutePosition + wheelBtn.AbsoluteSize / 2
+        local guiInset = GuiService:GetGuiInset()
+        local dx = (mouseX - guiInset.X) - centerAbs.X
+        local dy = mouseY - centerAbs.Y
+        local dist = math.sqrt(dx * dx + dy * dy)
+        local hue = (math.deg(math.atan2(dy, dx)) + 360) % 360
+        local sat = math.clamp(dist / WHEEL_R, 0, 1)
+        tempH = hue / 360
+        tempS = sat
+        updateFromHueSat()
+    end
+
+    wheelBtn.MouseButton1Down:Connect(function()
+        draggingWheel = true
+        local loc = UserInputService:GetMouseLocation()
+        handleWheelUpdate(loc.X, loc.Y)
+    end)
+
+    -- ─── VALUE DRAG ────────────────────────────────────────────────────
+    local function handleValueUpdate(mouseX)
+        local barAbsX = valueBar.AbsolutePosition.X
+        local v = math.clamp((mouseX - barAbsX) / valueBar.AbsoluteSize.X, 0, 1)
+        tempV = v
+        updateFromHueSat()
+    end
+
+    valueBtn.MouseButton1Down:Connect(function()
+        draggingValue = true
+        local loc = UserInputService:GetMouseLocation()
+        handleValueUpdate(loc.X)
+    end)
+
+    -- Global input tracking (only while picker is open)
+    local inputConn
+    local function startInputTracking()
+        inputConn = UserInputService.InputChanged:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseMovement then
+                local loc = UserInputService:GetMouseLocation()
+                if draggingWheel then handleWheelUpdate(loc.X, loc.Y) end
+                if draggingValue then handleValueUpdate(loc.X) end
+            end
+        end)
+        local endConn
+        endConn = UserInputService.InputEnded:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                draggingWheel = false
+                draggingValue = false
+            end
+        end)
+    end
+
+    local function stopInputTracking()
+        if inputConn then inputConn:Disconnect() inputConn = nil end
+    end
+
+    -- ─── OPEN / CLOSE ──────────────────────────────────────────────────
+    function openPicker()
+        if pickerOpen then return end
         pickerOpen = true
-        
-        pickerFrame = Instance.new("Frame")
-        pickerFrame.Size = UDim2.new(0, 160, 0, 120)
-        pickerFrame.BackgroundColor3 = Theme.SurfaceLight
-        pickerFrame.BorderSizePixel = 0
-        pickerFrame.ZIndex = 100
-        pickerFrame.Parent = popupHost or container.Parent.Parent.Parent
-        anchorPopup(pickerFrame, btn, -128, 20)
-        createCorner(pickerFrame, 7)
-        createStroke(pickerFrame, Theme.Border, 1)
-        pickerFrame.ClipsDescendants = true
-        
-        local colors = {
-            Color3.fromRGB(255, 80, 80), Color3.fromRGB(255, 160, 80), Color3.fromRGB(255, 230, 80),
-            Color3.fromRGB(80, 255, 120), Color3.fromRGB(80, 200, 255), Color3.fromRGB(160, 100, 255),
-            Color3.fromRGB(255, 100, 200), Color3.fromRGB(255, 255, 255), Color3.fromRGB(180, 180, 180),
-            Color3.fromRGB(100, 220, 160), Color3.fromRGB(255, 120, 120), Color3.fromRGB(120, 120, 120),
-        }
-        
-        for i, color in ipairs(colors) do
-            local row = math.floor((i - 1) / 4)
-            local col = (i - 1) % 4
-            local cBtn = Instance.new("TextButton")
-            cBtn.Size = UDim2.new(0, 28, 0, 22)
-            cBtn.Position = UDim2.new(0, 10 + col * 36, 0, 10 + row * 28)
-            cBtn.BackgroundColor3 = color
-            cBtn.BorderSizePixel = 0
-            cBtn.AutoButtonColor = false
-            cBtn.Text = ""
-            cBtn.ZIndex = 101
-            cBtn.Parent = pickerFrame
-            createCorner(cBtn, 3)
-            
-            cBtn.MouseButton1Click:Connect(function()
-                value = color
-                btn.BackgroundColor3 = color
-                closePicker()
-                if callback then callback(color) end
-            end)
-        end
+        pickerSeq = pickerSeq + 1
+        initFromHSV()
+        pickerFrame.Visible = true
+        -- Position immediately using the same math as anchorPopup so there
+        -- is no stale first frame; anchorPopup keeps it glued afterwards.
+        local host = pickerFrame.Parent
+        pickerFrame.Position = UDim2.new(
+            0, btn.AbsolutePosition.X - host.AbsolutePosition.X - (WHEEL_R + 64),
+            0, btn.AbsolutePosition.Y - host.AbsolutePosition.Y + 20
+        )
+        startInputTracking()
+        -- Smooth fade-in (GroupTransparency; Position is owned by anchorPopup)
+        pickerFrame.GroupTransparency = 1
+        TweenService:Create(pickerFrame, Theme.FastTween, {GroupTransparency = 0}):Play()
     end
-    
-    btn.MouseButton1Click:Connect(openPicker)
-    
+
+    function closePicker(finalSeq)
+        if finalSeq ~= pickerSeq then return end
+        local tween = TweenService:Create(pickerFrame, Theme.FastTween, {GroupTransparency = 1})
+        tween:Play()
+        tween.Completed:Once(function()
+            pickerFrame.Visible = false
+        end)
+        pickerOpen = false
+        draggingWheel = false
+        draggingValue = false
+        stopInputTracking()
+    end
+
+    -- Confirm: apply temporary color
+    okBtn.MouseButton1Click:Connect(function()
+        confirmed = Color3.fromHSV(tempH, tempS, tempV)
+        value = confirmed
+        btn.BackgroundColor3 = confirmed
+        if callback then callback(confirmed) end
+        closePicker(pickerSeq)
+    end)
+
+    -- Cancel: discard changes, restore confirmed color
+    xBtn.MouseButton1Click:Connect(function()
+        tempH, tempS, tempV = confirmed:ToHSV()
+        btn.BackgroundColor3 = confirmed
+        closePicker(pickerSeq)
+    end)
+
+    btn.MouseButton1Click:Connect(function()
+        if pickerOpen then
+            closePicker(pickerSeq)
+        else
+            openPicker()
+        end
+    end)
+
+    -- Close when clicking outside
+    local outsideConn
+    outsideConn = UserInputService.InputBegan:Connect(function(input)
+        if not pickerOpen or input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
+        local mouseLoc = UserInputService:GetMouseLocation()
+        local guiInset = GuiService:GetGuiInset()
+        local pos = Vector2.new(mouseLoc.X - guiInset.X, mouseLoc.Y - guiInset.Y)
+        local p = pickerFrame.AbsolutePosition
+        local s = pickerFrame.AbsoluteSize
+        local btnP = btn.AbsolutePosition
+        local btnS = btn.AbsoluteSize
+        local insidePopup = pos.X >= p.X and pos.X <= p.X + s.X and pos.Y >= p.Y and pos.Y <= p.Y + s.Y
+        local insideBtn = pos.X >= btnP.X and pos.X <= btnP.X + btnS.X and pos.Y >= btnP.Y and pos.Y <= btnP.Y + btnS.Y
+        if not insidePopup and not insideBtn then
+            -- Cancel on outside click (discard changes)
+            tempH, tempS, tempV = confirmed:ToHSV()
+            btn.BackgroundColor3 = confirmed
+            closePicker(pickerSeq)
+        end
+    end)
+
+    container.Destroying:Connect(function()
+        if outsideConn then outsideConn:Disconnect() end
+        stopInputTracking()
+    end)
+
     return container
 end
 
@@ -1692,7 +2004,7 @@ function UI:notifyKeybindToggle(mod)
     local notif = _getInstance()._notifications
     if not notif then return end
     local verb = mod.Enabled and "Enabled" or "Disabled"
-    notif:Notify("Keybind", mod.Name .. " " .. verb, mod.Enabled and "success" or "warning")
+    notif:Notify(mod.Name, verb, mod.Enabled and "success" or "warning")
 end
 
 function UI:createMainWindow()
@@ -2504,7 +2816,7 @@ function UI:createSettingsPanel()
     local panel = Instance.new("Frame")
     panel.Name = "SettingsPanel"
     panel.Size = UDim2.new(0, Theme.SettingsPanelWidth, 1, 0)
-    panel.Position = UDim2.new(1, -Theme.SettingsPanelWidth, 0, 0)
+    panel.Position = UDim2.new(1, 0, 0, 0) -- start off-screen right
     panel.BackgroundColor3 = Theme.Surface
     panel.BorderSizePixel = 0
     panel.Visible = false
@@ -2513,6 +2825,7 @@ function UI:createSettingsPanel()
     createStroke(panel, Theme.Border, 1)
     self.settingsPanel = panel
     self.settingsPanelVisible = false
+    self._panelSeq = 0
     
     local padding = Instance.new("UIPadding")
     padding.PaddingTop = UDim.new(0, 12)
@@ -2566,7 +2879,7 @@ function UI:createSettingsPanel()
         end
     end)
     
-    -- Settings scroll (contains ONLY the selected module's controls)
+    -- Settings scroll
     local scroll = Instance.new("ScrollingFrame")
     scroll.Name = "SettingsList"
     scroll.Size = UDim2.new(1, 0, 1, -60)
@@ -2578,38 +2891,63 @@ function UI:createSettingsPanel()
     scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
     scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
     scroll.Parent = panel
+    self.settingsScroll = scroll
     
     createListLayout(scroll, 4)
-    self.settingsScroll = scroll
+    
+    -- CanvasGroup inside the scroll for crossfade when switching modules
+    local content = Instance.new("CanvasGroup")
+    content.Name = "ContentHolder"
+    content.Size = UDim2.new(1, 0, 0, 0)
+    content.AutomaticSize = Enum.AutomaticSize.Y
+    content.BackgroundTransparency = 1
+    content.Parent = scroll
+    createListLayout(content, 3)
+    self.settingsContent = content
 end
 
--- Opens/closes the right-side panel and resizes the module list area so the
--- layout always reflects the panel state. The panel is anchored to the right
--- edge of the modules page (relative UDim2), so it moves with the main UI.
+-- Opens/closes the right-side panel with a smooth slide and resizes
+-- the module list area so the layout always reflects the panel state.
+-- Tweening the same property auto-cancels the previous tween.
 function UI:setSettingsPanelVisible(visible)
-    self.settingsPanelVisible = visible and true or false
-    if self.settingsPanel then
-        self.settingsPanel.Visible = self.settingsPanelVisible
+    local target = visible and true or false
+    if self.settingsPanelVisible == target then return end
+    self.settingsPanelVisible = target
+    local panel = self.settingsPanel
+    if panel then
+        if target then
+            panel.Visible = true
+            TweenService:Create(panel, Theme.TweenInfo, {
+                Position = UDim2.new(1, -Theme.SettingsPanelWidth, 0, 0)
+            }):Play()
+        else
+            local tween = TweenService:Create(panel, Theme.TweenInfo, {
+                Position = UDim2.new(1, 0, 0, 0)
+            })
+            tween.Completed:Once(function()
+                -- Only hide if still in the closed state and no re-open raced in
+                if not self.settingsPanelVisible
+                    and math.abs(panel.Position.X.Offset) < 2 then
+                    panel.Visible = false
+                end
+            end)
+            tween:Play()
+        end
     end
     if self.moduleListArea then
-        if self.settingsPanelVisible then
-            self.moduleListArea.Size = UDim2.new(1, -Theme.SidebarWidth - Theme.SettingsPanelWidth, 1, 0)
-        else
-            self.moduleListArea.Size = UDim2.new(1, -Theme.SidebarWidth, 1, 0)
-        end
+        local targetAreaSize = target
+            and UDim2.new(1, -Theme.SidebarWidth - Theme.SettingsPanelWidth, 1, 0)
+            or  UDim2.new(1, -Theme.SidebarWidth, 1, 0)
+        TweenService:Create(self.moduleListArea, Theme.TweenInfo, {Size = targetAreaSize}):Play()
     end
 end
 
 function UI:refreshSettingsPanel()
     local panel = self.settingsPanel
-    if not panel or not self.settingsScroll then return end
+    if not panel or not self.settingsScroll or not self.settingsContent then return end
     
-    -- Clear existing controls (previous module's settings must not linger)
-    for _, child in ipairs(self.settingsScroll:GetChildren()) do
-        if child:IsA("Frame") then
-            child:Destroy()
-        end
-    end
+    self._panelSeq = (self._panelSeq or 0) + 1
+    local seq = self._panelSeq
     
     local mod = self.selectedModule
     if not mod then
@@ -2617,25 +2955,53 @@ function UI:refreshSettingsPanel()
         return
     end
     
+    -- Update header (always immediate, never mid-fade)
     self.settingsModuleName.Text = mod.Name
     self.settingsModuleDesc.Text = mod.Description
     
-    -- Update star icon
     if self.settingsStarIcon then
         self.settingsStarIcon:Destroy()
     end
-    local starIcon = mod.Favorite and Icons.Icon("StarFilled", 15, Theme.Accent) or Icons.Icon("Star", 15)
+    local starIcon = mod.Favorite
+        and Icons.Icon("StarFilled", 15, Theme.Accent)
+        or Icons.Icon("Star", 15)
     starIcon.Size = UDim2.new(0, 15, 0, 15)
     starIcon.Position = UDim2.new(0.5, -7, 0.5, -7)
     starIcon.Parent = self.settingsStarBtn
     self.settingsStarIcon = starIcon
     
-    -- Build the selected module's controls
-    for _, sName in ipairs(mod._settingOrder) do
-        local setting = mod.Settings[sName]
-        if setting then
-            self:createSettingControl(setting, mod, self.settingsScroll)
+    local content = self.settingsContent
+    local wasVisible = self.settingsPanelVisible
+    
+    local function rebuild()
+        if seq ~= self._panelSeq then return false end
+        for _, child in ipairs(content:GetChildren()) do
+            if child:IsA("Frame") or child:IsA("CanvasGroup") then
+                child:Destroy()
+            end
         end
+        for _, sName in ipairs(mod._settingOrder) do
+            local setting = mod.Settings[sName]
+            if setting then
+                self:createSettingControl(setting, mod, content)
+            end
+        end
+        return true
+    end
+    
+    if wasVisible and #content:GetChildren() > 0 then
+        -- Module switch: smooth crossfade old content → new content
+        local fadeOut = TweenService:Create(content, Theme.FastTween, {GroupTransparency = 1})
+        fadeOut:Play()
+        fadeOut.Completed:Once(function()
+            if seq ~= self._panelSeq then return end
+            if rebuild() then
+                content.GroupTransparency = 0
+            end
+        end)
+    else
+        rebuild()
+        content.GroupTransparency = 0
     end
     
     self:setSettingsPanelVisible(true)
