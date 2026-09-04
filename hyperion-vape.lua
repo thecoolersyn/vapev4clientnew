@@ -509,7 +509,31 @@ end
 			EnsureHyperionConfig()
 			local btnText = settings.Text or settings.Title or "Button"
 			module:AddButton(btnText, settings.Func or settings.Callback or function() end)
-			return {}
+			-- Return a mock object that passes IsA("TextButton") checks and
+			-- absorbs property writes / tree lookups, so Frost-specific layout
+			-- hacks (e.g. the custom Accuracy Range widget) degrade gracefully
+			-- on Impulse instead of erroring.
+			return setmetatable({}, {
+				__index = function(_, key)
+					if key == "IsA" then
+						return function(_, className)
+							return className == "TextButton" or className == "Frame"
+						end
+					end
+					if key == "GetDescendants" or key == "GetChildren" then
+						return function() return {} end
+					end
+					if key == "FindFirstChild" or key == "FindFirstChildOfClass"
+						or key == "FindFirstChildWhichIsA" then
+						return function() return nil end
+					end
+					if key == "Destroy" or key == "ClearAllChildren" then
+						return function() end
+					end
+					return nil
+				end,
+				__newindex = function() end,
+			})
 		end
 
 		function wrapped:AddColorPicker(name, opts)
