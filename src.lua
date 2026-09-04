@@ -98,6 +98,7 @@ local _airflowMerged = false
 local LucideAssets = {
     ["lucide-settings"] = "rbxassetid://10734950309",
     ["lucide-minus"] = "rbxassetid://10734896206",
+    ["lucide-plus"] = "rbxassetid://10734924592",
     ["lucide-x"] = "rbxassetid://10747384394",
     ["lucide-arrow-left"] = "rbxassetid://10709768114",
     ["lucide-search"] = "rbxassetid://10734943674",
@@ -174,6 +175,7 @@ function Icons.Icon(name, size, color)
     local iconMap = {
         Settings = "lucide-settings",
         Minus = "lucide-minus",
+        Plus = "lucide-plus",
         X = "lucide-x",
         ArrowLeft = "lucide-arrow-left",
         Search = "lucide-search",
@@ -842,7 +844,7 @@ function Controls.CreateSlider(parent, name, config, callback)
     return container
 end
 
-function Controls.CreateDropdown(parent, name, config, callback)
+function Controls.CreateDropdown(parent, name, config, callback, popupHost)
     local options = config.Options or {}
     local default = config.Default or (options[1] or "")
     local value = default
@@ -898,17 +900,19 @@ function Controls.CreateDropdown(parent, name, config, callback)
         open = true
         
         dropdownFrame = Instance.new("Frame")
-        dropdownFrame.Size = UDim2.new(0, btn.AbsoluteSize.X, 0, #options * 26 + 6)
+        dropdownFrame.Size = UDim2.new(0, btn.AbsoluteSize.X, 0, #options * 26 + 10)
         dropdownFrame.BackgroundColor3 = Theme.SurfaceLight
         dropdownFrame.BorderSizePixel = 0
         dropdownFrame.ZIndex = 100
-        dropdownFrame.Parent = container.Parent.Parent.Parent
+        dropdownFrame.Parent = popupHost or container.Parent.Parent.Parent
         anchorPopup(dropdownFrame, btn, 0, btn.AbsoluteSize.Y + 2)
         createCorner(dropdownFrame, 5)
         createStroke(dropdownFrame, Theme.Border, 1)
         
         local layout = createListLayout(dropdownFrame, 0)
-        createPadding(dropdownFrame, 3, 3, 0, 0)
+        -- Padding must be >= corner radius so option buttons never paint over
+        -- the rounded corner curve (UICorner does not clip children)
+        createPadding(dropdownFrame, 5, 5, 0, 0)
         
         for i, opt in ipairs(options) do
             local optBtn = Instance.new("TextButton")
@@ -971,10 +975,11 @@ function Controls.CreateDropdown(parent, name, config, callback)
     return container
 end
 
-function Controls.CreateKeybind(parent, name, config, callback)
+function Controls.CreateKeybind(parent, name, config, callback, popupHost)
     local default = config.Default or Enum.KeyCode.Unknown
     local value = default
     local listening = false
+    local conn = nil
     
     local container = Instance.new("Frame")
     container.Name = "Keybind_" .. name
@@ -1009,28 +1014,48 @@ function Controls.CreateKeybind(parent, name, config, callback)
         end
     end
     
-    btn.MouseButton1Click:Connect(function()
+    local function stopListening()
+        listening = false
+        if conn then
+            conn:Disconnect()
+            conn = nil
+        end
+        updateLabel()
+    end
+    
+    local function startListening()
+        if listening then
+            stopListening()
+            return
+        end
         listening = true
         updateLabel()
-    end)
-    
-    local conn
-    conn = UserInputService.InputBegan:Connect(function(input)
-        if listening then
-            if input.KeyCode ~= Enum.KeyCode.Escape then
-                value = input.KeyCode
-                if callback then callback(value) end
+        conn = UserInputService.InputBegan:Connect(function(input)
+            if not listening then return end
+            -- Only capture keyboard input; ignore mouse, gamepad, etc.
+            if input.UserInputType ~= Enum.UserInputType.Keyboard then
+                return
             end
-            listening = false
-            updateLabel()
-            conn:Disconnect()
-        end
-    end)
+            -- ESC cancels without changing the keybind
+            if input.KeyCode == Enum.KeyCode.Escape then
+                stopListening()
+                return
+            end
+            -- Valid keyboard key captured
+            value = input.KeyCode
+            if callback then callback(value) end
+            stopListening()
+        end)
+    end
+    
+    btn.MouseButton1Click:Connect(startListening)
+    
+    container.Destroying:Connect(stopListening)
     
     return container
 end
 
-function Controls.CreateColorPicker(parent, name, config, callback)
+function Controls.CreateColorPicker(parent, name, config, callback, popupHost)
     local default = config.Default or Color3.fromRGB(255, 255, 255)
     local value = default
     
@@ -1074,10 +1099,11 @@ function Controls.CreateColorPicker(parent, name, config, callback)
         pickerFrame.BackgroundColor3 = Theme.SurfaceLight
         pickerFrame.BorderSizePixel = 0
         pickerFrame.ZIndex = 100
-        pickerFrame.Parent = container.Parent.Parent.Parent
+        pickerFrame.Parent = popupHost or container.Parent.Parent.Parent
         anchorPopup(pickerFrame, btn, -128, 20)
         createCorner(pickerFrame, 7)
         createStroke(pickerFrame, Theme.Border, 1)
+        pickerFrame.ClipsDescendants = true
         
         local colors = {
             Color3.fromRGB(255, 80, 80), Color3.fromRGB(255, 160, 80), Color3.fromRGB(255, 230, 80),
@@ -1215,7 +1241,7 @@ function Controls.CreateTextbox(parent, name, config, callback)
     return container
 end
 
-function Controls.CreateMultiDropdown(parent, name, config, callback)
+function Controls.CreateMultiDropdown(parent, name, config, callback, popupHost)
     local options = config.Options or {}
     local default = config.Default or {}
     local values = {}
@@ -1283,17 +1309,19 @@ function Controls.CreateMultiDropdown(parent, name, config, callback)
         open = true
         
         dropdownFrame = Instance.new("Frame")
-        dropdownFrame.Size = UDim2.new(0, btn.AbsoluteSize.X, 0, #options * 26 + 6)
+        dropdownFrame.Size = UDim2.new(0, btn.AbsoluteSize.X, 0, #options * 26 + 10)
         dropdownFrame.BackgroundColor3 = Theme.SurfaceLight
         dropdownFrame.BorderSizePixel = 0
         dropdownFrame.ZIndex = 100
-        dropdownFrame.Parent = container.Parent.Parent.Parent
+        dropdownFrame.Parent = popupHost or container.Parent.Parent.Parent
         anchorPopup(dropdownFrame, btn, 0, btn.AbsoluteSize.Y + 2)
         createCorner(dropdownFrame, 5)
         createStroke(dropdownFrame, Theme.Border, 1)
         
         local layout = createListLayout(dropdownFrame, 0)
-        createPadding(dropdownFrame, 3, 3, 0, 0)
+        -- Padding must be >= corner radius so option buttons never paint over
+        -- the rounded corner curve (UICorner does not clip children)
+        createPadding(dropdownFrame, 5, 5, 0, 0)
         
         for i, opt in ipairs(options) do
             local optBtn = Instance.new("TextButton")
@@ -1405,6 +1433,9 @@ end
 
 function ModuleInstance:SetKeybind(key)
     self.Keybind = key
+    if _getInstance()._ui and _getInstance()._ui.refreshModules then
+        _getInstance()._ui:refreshModules()
+    end
 end
 
 function ModuleInstance:GetKeybind()
@@ -1606,6 +1637,9 @@ function UI.new()
     self.isMinimized = false
     self.connections = {}
     self.settingControls = {}
+    self.keybindCapture = nil
+    self.keybindOverlay = nil
+    self.exitConfirmation = nil
     return self
 end
 
@@ -1624,6 +1658,8 @@ function UI:Init()
     self:createModulesPage()
     self:createConfigPage()
     self:showPage("Modules")
+    self:refreshSidebar()
+    self:refreshModules()
     
     -- Init notification service
     local notif = _getInstance()._notifications
@@ -1788,12 +1824,13 @@ function UI:createTopBar()
             TweenService:Create(btn, Theme.FastTween, {BackgroundColor3 = Theme.Surface}):Play()
         end)
         
-        return btn
+        return btn, icon
     end
     
-    local settingsBtn = createControlBtn("Settings", "Settings")
-    local minimizeBtn = createControlBtn("Minimize", "Minus")
+    local settingsBtn, settingsIcon = createControlBtn("Settings", "Settings")
+    local minimizeBtn, minimizeIcon = createControlBtn("Minimize", "Minus")
     local closeBtn = createControlBtn("Close", "X")
+    self.minimizeIcon = minimizeIcon
     
     settingsBtn.MouseButton1Click:Connect(function()
         self:showPage("Config")
@@ -1804,7 +1841,7 @@ function UI:createTopBar()
     end)
     
     closeBtn.MouseButton1Click:Connect(function()
-        self:close()
+        self:showExitConfirmation()
     end)
 end
 
@@ -1820,11 +1857,8 @@ function UI:createModulesPage()
     -- Sidebar
     self:createSidebar()
     
-    -- Module list area
+    -- Module list area (full width; no separate settings panel — settings live in cards)
     self:createModuleListArea()
-    
-    -- Settings panel
-    self:createSettingsPanel()
 end
 
 function UI:createSidebar()
@@ -1974,7 +2008,7 @@ end
 function UI:createModuleListArea()
     local area = Instance.new("Frame")
     area.Name = "ModuleListArea"
-    area.Size = UDim2.new(1, -Theme.SidebarWidth - Theme.SettingsPanelWidth, 1, 0)
+    area.Size = UDim2.new(1, -Theme.SidebarWidth, 1, 0)
     area.Position = UDim2.new(0, Theme.SidebarWidth, 0, 0)
     area.BackgroundTransparency = 1
     area.Parent = self.modulesPage
@@ -2042,12 +2076,16 @@ function UI:refreshModules()
         end
     end
     
-    -- Gather modules for current category
+    -- Gather modules: when searching, use ALL modules across all categories
     local modules = {}
-    
     local registry = _getInstance()._registry
     if registry then
-        if self.selectedCategory == "Favorites" then
+        local searchActive = self.searchTerm and self.searchTerm ~= ""
+        if searchActive then
+            for name, mod in pairs(registry.modules) do
+                modules[#modules + 1] = mod
+            end
+        elseif self.selectedCategory == "Favorites" then
             for name, mod in pairs(registry.modules) do
                 if mod.Favorite then
                     modules[#modules + 1] = mod
@@ -2084,6 +2122,131 @@ function UI:refreshModules()
     end
 end
 
+function UI:isKeybindCapturing()
+    return self.keybindCapture ~= nil
+end
+
+function UI:startKeybindCapture(mod, onDone)
+    if self.keybindCapture then
+        self:cancelKeybindCapture()
+    end
+    local capture = {
+        module = mod,
+        onDone = onDone,
+        conn = nil,
+        overlay = nil,
+        stale = false,
+    }
+    self.keybindCapture = capture
+    self:showKeybindCaptureOverlay(mod)
+    capture.conn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if capture.stale then return end
+        if gameProcessed then return end
+        if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+        local key = input.KeyCode
+        if key == Enum.KeyCode.Unknown then return end
+        task.defer(function()
+            if capture.stale then return end
+            capture.stale = true
+            if capture.conn then
+                capture.conn:Disconnect()
+                capture.conn = nil
+            end
+            self:hideKeybindCaptureOverlay()
+            if self.keybindCapture == capture then
+                self.keybindCapture = nil
+            end
+            if key == Enum.KeyCode.Escape then
+                if onDone then safeCall(onDone, nil) end
+            else
+                mod:SetKeybind(key)
+                self:refreshModules()
+                if onDone then safeCall(onDone, key) end
+            end
+        end)
+    end)
+end
+
+function UI:cancelKeybindCapture()
+    local capture = self.keybindCapture
+    if not capture then return end
+    capture.stale = true
+    if capture.conn then
+        capture.conn:Disconnect()
+        capture.conn = nil
+    end
+    self.keybindCapture = nil
+    self:hideKeybindCaptureOverlay()
+end
+
+function UI:showKeybindCaptureOverlay(mod)
+    self:hideKeybindCaptureOverlay()
+    local overlay = Instance.new("Frame")
+    overlay.Name = "KeybindCaptureOverlay"
+    overlay.Size = UDim2.new(1, 0, 1, 0)
+    overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    overlay.BackgroundTransparency = 0.45
+    overlay.BorderSizePixel = 0
+    overlay.ZIndex = 400
+    overlay.Parent = self.modulesPage
+    
+    local prompt = Instance.new("TextButton")
+    prompt.Name = "CapturePrompt"
+    prompt.Size = UDim2.new(0, 300, 0, 60)
+    prompt.Position = UDim2.new(0.5, -150, 0.5, -30)
+    prompt.BackgroundColor3 = Theme.Surface
+    prompt.BorderSizePixel = 0
+    prompt.AutoButtonColor = false
+    prompt.Text = ""
+    prompt.ZIndex = 401
+    prompt.Parent = overlay
+    createCorner(prompt, 8)
+    createStroke(prompt, Theme.Border, 1)
+    
+    local titleText = createText(prompt, "Press a key for " .. mod.Name, 13, Theme.Text, Theme.FontMedium, Enum.TextXAlignment.Center)
+    titleText.Size = UDim2.new(1, 0, 0, 20)
+    titleText.Position = UDim2.new(0, 0, 0, 10)
+    titleText.ZIndex = 402
+    
+    local hintText = createText(prompt, "Press ESC to cancel", 10, Theme.TextMuted, Theme.Font, Enum.TextXAlignment.Center)
+    hintText.Size = UDim2.new(1, 0, 0, 14)
+    hintText.Position = UDim2.new(0, 0, 0, 34)
+    hintText.ZIndex = 402
+    
+    self.keybindOverlay = overlay
+end
+
+function UI:hideKeybindCaptureOverlay()
+    if self.keybindOverlay then
+        self.keybindOverlay:Destroy()
+        self.keybindOverlay = nil
+    end
+end
+
+function UI:populateCardSettings(mod, settingsArea, card)
+    settingsArea.Visible = true
+    local totalHeight = 16
+    local order = 0
+    local function place(ctrl, height)
+        order = order + 1
+        ctrl.LayoutOrder = order
+        ctrl.Parent = settingsArea
+        totalHeight = totalHeight + height + 3
+    end
+    for _, sName in ipairs(mod._settingOrder) do
+        local setting = mod.Settings[sName]
+        if setting then
+            local info = self:createSettingControl(setting, mod, settingsArea)
+            if info and info.frame then
+                place(info.frame, info.height or 28)
+            end
+        end
+    end
+    totalHeight = math.max(totalHeight - 3, 0)
+    settingsArea.Size = UDim2.new(1, 0, 0, totalHeight)
+    card.Size = UDim2.new(1, 0, 0, 42 + totalHeight)
+end
+
 function UI:createModuleCard(mod, index)
     local card = Instance.new("Frame")
     card.Name = "ModuleCard"
@@ -2092,7 +2255,17 @@ function UI:createModuleCard(mod, index)
     card.BorderSizePixel = 0
     card.LayoutOrder = index
     card.Parent = self.moduleListScroll
+    card.ClipsDescendants = true
+    card:SetAttribute("ModuleName", mod.Name)
     createCorner(card, 6)
+    
+    -- Header row (always visible)
+    local headerRow = Instance.new("Frame")
+    headerRow.Name = "HeaderRow"
+    headerRow.Size = UDim2.new(1, 0, 0, 42)
+    headerRow.BackgroundTransparency = 1
+    headerRow.BorderSizePixel = 0
+    headerRow.Parent = card
     
     -- Accent indicator
     local accent = Instance.new("Frame")
@@ -2101,16 +2274,16 @@ function UI:createModuleCard(mod, index)
     accent.Position = UDim2.new(0, 6, 0, 6)
     accent.BackgroundColor3 = mod.Enabled and Theme.Accent or Theme.Border
     accent.BorderSizePixel = 0
-    accent.Parent = card
+    accent.Parent = headerRow
     createCorner(accent, 2)
     
     -- Module name
-    local nameLabel = createText(card, mod.Name, 12, Theme.Text, Theme.FontMedium, Enum.TextXAlignment.Left)
+    local nameLabel = createText(headerRow, mod.Name, 12, Theme.Text, Theme.FontMedium, Enum.TextXAlignment.Left)
     nameLabel.Size = UDim2.new(0.38, 0, 0, 16)
     nameLabel.Position = UDim2.new(0, 16, 0, 7)
     
     -- Description
-    local descLabel = createText(card, mod.Description, 10, Theme.TextMuted, Theme.Font, Enum.TextXAlignment.Left)
+    local descLabel = createText(headerRow, mod.Description, 10, Theme.TextMuted, Theme.Font, Enum.TextXAlignment.Left)
     descLabel.Size = UDim2.new(0.55, -90, 0, 12)
     descLabel.Position = UDim2.new(0, 16, 0, 25)
     descLabel.TextTruncate = Enum.TextTruncate.AtEnd
@@ -2118,23 +2291,53 @@ function UI:createModuleCard(mod, index)
     -- Right side controls
     local rightX = 1
     
-    -- Keybind indicator
+    -- Keybind indicator (single source of truth: mod.Keybind)
+    local kbIndicator = nil
+    local kbLabel = nil
     if mod.Keybind then
         local kb = Instance.new("Frame")
+        kb.Name = "KeybindIndicator"
         kb.Size = UDim2.new(0, 22, 0, 16)
         kb.Position = UDim2.new(1, -rightX - 22, 0.5, -8)
         kb.BackgroundColor3 = Theme.SurfaceLight
         kb.BorderSizePixel = 0
-        kb.Parent = card
+        kb.Parent = headerRow
         createCorner(kb, 4)
         
-        local kbLabel = createText(kb, tostring(mod.Keybind.Name or mod.Keybind), 9, Theme.TextSecondary, Theme.FontMedium, Enum.TextXAlignment.Center)
+        kbLabel = createText(kb, tostring(mod.Keybind.Name or mod.Keybind), 9, Theme.TextSecondary, Theme.FontMedium, Enum.TextXAlignment.Center)
         kbLabel.Size = UDim2.new(1, 0, 1, 0)
+        kbIndicator = kb
         
         rightX = rightX + 26
     end
     
-    -- Toggle
+    local function refreshKeybindIndicator()
+        if mod.Keybind then
+            if not kbIndicator then
+                local kb = Instance.new("Frame")
+                kb.Name = "KeybindIndicator"
+                kb.Size = UDim2.new(0, 22, 0, 16)
+                kb.Position = UDim2.new(1, -rightX - 22, 0.5, -8)
+                kb.BackgroundColor3 = Theme.SurfaceLight
+                kb.BorderSizePixel = 0
+                kb.Parent = headerRow
+                createCorner(kb, 4)
+                kbLabel = createText(kb, tostring(mod.Keybind.Name or mod.Keybind), 9, Theme.TextSecondary, Theme.FontMedium, Enum.TextXAlignment.Center)
+                kbLabel.Size = UDim2.new(1, 0, 1, 0)
+                kbIndicator = kb
+            else
+                kbLabel.Text = tostring(mod.Keybind.Name or mod.Keybind)
+            end
+        else
+            if kbIndicator then
+                kbIndicator:Destroy()
+                kbIndicator = nil
+                kbLabel = nil
+            end
+        end
+    end
+    
+    -- Toggle (ONE enable control per module)
     local toggle = Instance.new("TextButton")
     toggle.Name = "Toggle"
     toggle.Size = UDim2.new(0, 30, 0, 16)
@@ -2143,7 +2346,7 @@ function UI:createModuleCard(mod, index)
     toggle.BorderSizePixel = 0
     toggle.AutoButtonColor = false
     toggle.Text = ""
-    toggle.Parent = card
+    toggle.Parent = headerRow
     createCorner(toggle, 8)
     
     local knob = Instance.new("Frame")
@@ -2155,12 +2358,17 @@ function UI:createModuleCard(mod, index)
     createCorner(knob, 6)
     
     toggle.MouseButton1Click:Connect(function()
+        if self:isKeybindCapturing() then return end
         mod:SetEnabled(not mod.Enabled)
-        toggle.BackgroundColor3 = mod.Enabled and Theme.ToggleOn or Theme.ToggleOff
-        TweenService:Create(knob, Theme.FastTween, {
-            Position = UDim2.new(mod.Enabled and 1 or 0, mod.Enabled and -14 or 2, 0.5, -6)
-        }):Play()
-        accent.BackgroundColor3 = mod.Enabled and Theme.Accent or Theme.Border
+        if mod.Enabled then
+            TweenService:Create(toggle, Theme.FastTween, {BackgroundColor3 = Theme.ToggleOn}):Play()
+            TweenService:Create(knob, Theme.FastTween, {Position = UDim2.new(1, -14, 0.5, -6)}):Play()
+            TweenService:Create(accent, Theme.FastTween, {BackgroundColor3 = Theme.Accent}):Play()
+        else
+            TweenService:Create(toggle, Theme.FastTween, {BackgroundColor3 = Theme.ToggleOff}):Play()
+            TweenService:Create(knob, Theme.FastTween, {Position = UDim2.new(0, 2, 0.5, -6)}):Play()
+            TweenService:Create(accent, Theme.FastTween, {BackgroundColor3 = Theme.Border}):Play()
+        end
     end)
     
     rightX = rightX + 34
@@ -2170,11 +2378,11 @@ function UI:createModuleCard(mod, index)
     menuBtn.Name = "MenuBtn"
     menuBtn.Size = UDim2.new(0, 20, 0, 20)
     menuBtn.Position = UDim2.new(1, -rightX - 20, 0.5, -10)
-    menuBtn.BackgroundColor3 = Theme.Surface
+    menuBtn.BackgroundColor3 = (mod == self.selectedModule) and Theme.SurfaceLight or Theme.Surface
     menuBtn.BorderSizePixel = 0
     menuBtn.AutoButtonColor = false
     menuBtn.Text = ""
-    menuBtn.Parent = card
+    menuBtn.Parent = headerRow
     createCorner(menuBtn, 5)
     
     local menuIcon = Icons.Icon("MoreVertical", 11)
@@ -2186,12 +2394,43 @@ function UI:createModuleCard(mod, index)
         self:showModuleContextMenu(mod, menuBtn)
     end)
     
-    -- Click to select
-    card.InputBegan:Connect(function(input)
+    -- Settings area (hidden by default, shown only when selected)
+    local settingsArea = Instance.new("Frame")
+    settingsArea.Name = "SettingsArea"
+    settingsArea.Size = UDim2.new(1, 0, 0, 0)
+    settingsArea.Position = UDim2.new(0, 0, 0, 42)
+    settingsArea.BackgroundTransparency = 1
+    settingsArea.BorderSizePixel = 0
+    settingsArea.Visible = false
+    settingsArea.Parent = card
+    
+    local settingsLayout = Instance.new("UIListLayout")
+    settingsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    settingsLayout.Padding = UDim.new(0, 3)
+    settingsLayout.Parent = settingsArea
+    
+    local settingsPadding = Instance.new("UIPadding")
+    settingsPadding.PaddingTop = UDim.new(0, 6)
+    settingsPadding.PaddingBottom = UDim.new(0, 10)
+    settingsPadding.PaddingLeft = UDim.new(0, 14)
+    settingsPadding.PaddingRight = UDim.new(0, 10)
+    settingsPadding.Parent = settingsArea
+    
+    local isSelected = (mod == self.selectedModule)
+    if isSelected then
+        self:populateCardSettings(mod, settingsArea, card)
+    end
+    
+    -- Click header to select (toggle selection)
+    headerRow.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            self.selectedModule = mod
+            if self:isKeybindCapturing() then return end
+            if self.selectedModule == mod then
+                self.selectedModule = nil
+            else
+                self.selectedModule = mod
+            end
             self:refreshModules()
-            self:refreshSettingsPanel()
         end
     end)
     
@@ -2206,6 +2445,7 @@ function UI:createModuleCard(mod, index)
             TweenService:Create(card, Theme.FastTween, {BackgroundColor3 = Theme.Surface}):Play()
         end
     end)
+    return card
 end
 
 function UI:showModuleContextMenu(mod, parent)
@@ -2271,15 +2511,13 @@ function UI:showModuleContextMenu(mod, parent)
             if i == 1 then
                 mod:SetFavorite(not mod.Favorite)
             elseif i == 2 then
-                -- Keybind handled by module
+                self:startKeybindCapture(mod)
             elseif i == 3 then
                 mod:Reset()
-                self:refreshSettingsPanel()
             elseif i == 4 then
                 self.selectedModule = mod
-                self:refreshModules()
-                self:refreshSettingsPanel()
             end
+            self:refreshModules()
             menu:Destroy()
             self.contextMenu = nil
         end)
@@ -2316,276 +2554,116 @@ function UI:showModuleContextMenu(mod, parent)
 end
 
 function UI:createSettingsPanel()
-    local panel = Instance.new("Frame")
-    panel.Name = "SettingsPanel"
-    panel.Size = UDim2.new(0, Theme.SettingsPanelWidth, 1, 0)
-    panel.Position = UDim2.new(1, -Theme.SettingsPanelWidth, 0, 0)
-    panel.BackgroundColor3 = Theme.Surface
-    panel.BorderSizePixel = 0
-    panel.Parent = self.modulesPage
-    createStroke(panel, Theme.Border, 1)
-    self.settingsPanel = panel
-    
-    local padding = Instance.new("UIPadding")
-    padding.PaddingTop = UDim.new(0, 12)
-    padding.PaddingBottom = UDim.new(0, 12)
-    padding.PaddingLeft = UDim.new(0, 12)
-    padding.PaddingRight = UDim.new(0, 12)
-    padding.Parent = panel
-    
-    local layout = Instance.new("UIListLayout")
-    layout.SortOrder = Enum.SortOrder.LayoutOrder
-    layout.Padding = UDim.new(0, 8)
-    layout.Parent = panel
-    self.settingsPanelLayout = layout
-    
-    -- Header
-    local header = Instance.new("Frame")
-    header.Name = "Header"
-    header.Size = UDim2.new(1, 0, 0, 56)
-    header.BackgroundTransparency = 1
-    header.LayoutOrder = 0
-    header.Parent = panel
-    
-    local moduleName = createText(header, "", 13, Theme.Text, Theme.FontMedium, Enum.TextXAlignment.Left)
-    moduleName.Size = UDim2.new(1, -70, 0, 18)
-    moduleName.Position = UDim2.new(0, 0, 0, 6)
-    self.settingsModuleName = moduleName
-    
-    local moduleDesc = createText(header, "", 10, Theme.TextMuted, Theme.Font, Enum.TextXAlignment.Left)
-    moduleDesc.Size = UDim2.new(1, -14, 0, 14)
-    moduleDesc.Position = UDim2.new(0, 0, 0, 26)
-    moduleDesc.TextWrapped = true
-    self.settingsModuleDesc = moduleDesc
-    
-    -- Right controls
-    local rightControls = Instance.new("Frame")
-    rightControls.Name = "RightControls"
-    rightControls.Size = UDim2.new(0, 56, 0, 28)
-    rightControls.Position = UDim2.new(1, -56, 0, 8)
-    rightControls.BackgroundTransparency = 1
-    rightControls.Parent = header
-    
-    local rightLayout = Instance.new("UIListLayout")
-    rightLayout.FillDirection = Enum.FillDirection.Horizontal
-    rightLayout.Padding = UDim.new(0, 4)
-    rightLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-    rightLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
-    rightLayout.Parent = rightControls
-    
-    -- Star button
-    local starBtn = Instance.new("TextButton")
-    starBtn.Name = "StarBtn"
-    starBtn.Size = UDim2.new(0, 24, 0, 24)
-    starBtn.BackgroundTransparency = 1
-    starBtn.AutoButtonColor = false
-    starBtn.Text = ""
-    starBtn.LayoutOrder = 1
-    starBtn.Parent = rightControls
-    self.settingsStarBtn = starBtn
-    
-    local starIcon = Icons.Icon("Star", 15)
-    starIcon.Size = UDim2.new(0, 15, 0, 15)
-    starIcon.Position = UDim2.new(0.5, -7, 0.5, -7)
-    starIcon.Parent = starBtn
-    self.settingsStarIcon = starIcon
-    
-    self._starConn = nil
-    self._toggleConn = nil
-    
-    -- Enabled toggle
-    local toggleBtn = Instance.new("TextButton")
-    toggleBtn.Name = "ToggleBtn"
-    toggleBtn.Size = UDim2.new(0, 32, 0, 18)
-    toggleBtn.BackgroundColor3 = Theme.ToggleOff
-    toggleBtn.BorderSizePixel = 0
-    toggleBtn.AutoButtonColor = false
-    toggleBtn.Text = ""
-    toggleBtn.LayoutOrder = 2
-    toggleBtn.Parent = rightControls
-    createCorner(toggleBtn, 9)
-    self.settingsToggleBtn = toggleBtn
-    
-    local toggleKnob = Instance.new("Frame")
-    toggleKnob.Size = UDim2.new(0, 14, 0, 14)
-    toggleKnob.Position = UDim2.new(0, 2, 0.5, -7)
-    toggleKnob.BackgroundColor3 = Theme.SliderHandle
-    toggleKnob.BorderSizePixel = 0
-    toggleKnob.Parent = toggleBtn
-    createCorner(toggleKnob, 7)
-    self.settingsToggleKnob = toggleKnob
-    
-    self._starConn = starBtn.MouseButton1Click:Connect(function()
-        local current = self.selectedModule
-        if current then
-            current:SetFavorite(not current.Favorite)
-            self:refreshSettingsPanel()
-            self:refreshModules()
-        end
-    end)
-    
-    self._toggleConn = toggleBtn.MouseButton1Click:Connect(function()
-        local current = self.selectedModule
-        if current then
-            current:SetEnabled(not current.Enabled)
-            self.settingsToggleBtn.BackgroundColor3 = current.Enabled and Theme.ToggleOn or Theme.ToggleOff
-            TweenService:Create(self.settingsToggleKnob, Theme.FastTween, {
-                Position = UDim2.new(current.Enabled and 1 or 0, current.Enabled and -16 or 2, 0.5, -7)
-            }):Play()
-            self:refreshModules()
-        end
-    end)
-    
-    -- Settings scroll
-    local scroll = Instance.new("ScrollingFrame")
-    scroll.Name = "SettingsList"
-    scroll.Size = UDim2.new(1, 0, 0, 0)
-    scroll.BackgroundTransparency = 1
-    scroll.ScrollBarThickness = 3
-    scroll.ScrollBarImageColor3 = Theme.AccentDim
-    scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-    scroll.AutomaticSize = Enum.AutomaticSize.Y
-    scroll.LayoutOrder = 1
-    scroll.Parent = panel
-    
-    local scrollPadding = Instance.new("UIPadding")
-    scrollPadding.PaddingTop = UDim.new(0, 4)
-    scrollPadding.PaddingBottom = UDim.new(0, 4)
-    scrollPadding.PaddingLeft = UDim.new(0, 0)
-    scrollPadding.PaddingRight = UDim.new(0, 0)
-    scrollPadding.Parent = scroll
-    
-    local layout2 = createListLayout(scroll, 3)
-    self.settingsLayout = layout2
-    self.settingsScroll = scroll
-    
-    -- Empty state
-    local empty = createText(scroll, "Select a module to view its settings", 11, Theme.TextMuted, Theme.Font, Enum.TextXAlignment.Center)
-    empty.Size = UDim2.new(1, 0, 1, 0)
-    empty.Name = "EmptyState"
-    self.settingsEmpty = empty
+    -- Settings now live inline in each module card. Keep a minimal panel
+    -- reference so downstream code that checks self.settingsPanel doesn't error.
+    self.settingsPanel = Instance.new("Frame")
+    self.settingsPanel.Name = "SettingsPanel"
+    self.settingsPanel.Size = UDim2.new(0, 0, 0, 0)
+    self.settingsPanel.BackgroundTransparency = 1
+    self.settingsPanel.BorderSizePixel = 0
+    self.settingsPanel.Parent = self.modulesPage
+    self.settingsScroll = self.settingsPanel
+    self.settingsEmpty = Instance.new("Frame", self.settingsPanel)
+    self.settingsEmpty.Visible = false
 end
 
 function UI:refreshSettingsPanel()
-    if not self.settingsScroll then return end
-    
-    -- Clear existing controls
-    for _, child in ipairs(self.settingsScroll:GetChildren()) do
-        if child ~= self.settingsEmpty and child:IsA("Frame") then
-            child:Destroy()
-        end
-    end
-    
-    local mod = self.selectedModule
-    
-    if not mod then
-        self.settingsEmpty.Visible = true
-        self.settingsModuleName.Text = ""
-        self.settingsModuleDesc.Text = ""
-        return
-    end
-    
-    self.settingsEmpty.Visible = false
-    self.settingsModuleName.Text = mod.Name
-    self.settingsModuleDesc.Text = mod.Description
-    
-    -- Update star
-    if self.settingsStarIcon then
-        self.settingsStarIcon:Destroy()
-    end
-    local starIcon = mod.Favorite and Icons.Icon("StarFilled", 16, Theme.Accent) or Icons.Icon("Star", 16)
-    starIcon.Size = UDim2.new(0, 16, 0, 16)
-    starIcon.Position = UDim2.new(0.5, -8, 0.5, -8)
-    starIcon.Parent = self.settingsStarBtn
-    self.settingsStarIcon = starIcon
-    
-    -- Update toggle
-    self.settingsToggleBtn.BackgroundColor3 = mod.Enabled and Theme.ToggleOn or Theme.ToggleOff
-    self.settingsToggleKnob.Position = UDim2.new(mod.Enabled and 1 or 0, mod.Enabled and -16 or 2, 0.5, -7)
-    
-    -- Create setting controls
-    for _, sName in ipairs(mod._settingOrder) do
-        local setting = mod.Settings[sName]
-        if setting then
-            local control = self:createSettingControl(setting, mod)
-            if control then
-                control.Parent = self.settingsScroll
-            end
-        end
-    end
+    -- No-op: settings are populated inline by refreshModules/populateCardSettings.
+    -- RefreshModules is the single source of truth for card state.
 end
 
-function UI:createSettingControl(setting, mod)
+function UI:createSettingControl(setting, mod, container)
+    local host = container or self.settingsScroll
     local ctrl = nil
+    local height = 28
+    
+    local lowerName = (setting.Name or ""):lower()
+    if lowerName == "enabled" or lowerName == "disabled" or lowerName == "enable" or lowerName == "disable" then
+        -- The module header already provides the ONE enable toggle
+        return nil
+    end
     
     if setting.Type == "Toggle" then
-        ctrl = Controls.CreateToggle(self.settingsScroll, setting.Name, setting.Value, function(val)
+        ctrl = Controls.CreateToggle(host, setting.Name, setting.Value, function(val)
             setting.Value = val
             if setting.Callback then safeCall(setting.Callback, val) end
         end)
+        height = 28
         
     elseif setting.Type == "Slider" then
-        ctrl = Controls.CreateSlider(self.settingsScroll, setting.Name, {
+        ctrl = Controls.CreateSlider(host, setting.Name, {
             Min = setting.Min, Max = setting.Max, Default = setting.Value, Decimals = setting.Decimals
         }, function(val)
             setting.Value = val
             if setting.Callback then safeCall(setting.Callback, val) end
         end)
+        height = 36
         
     elseif setting.Type == "Dropdown" then
-        ctrl = Controls.CreateDropdown(self.settingsScroll, setting.Name, {
+        ctrl = Controls.CreateDropdown(host, setting.Name, {
             Options = setting.Options, Default = setting.Value
         }, function(val)
             setting.Value = val
             if setting.Callback then safeCall(setting.Callback, val) end
-        end)
+        end, self.modulesPage)
+        height = 28
         
     elseif setting.Type == "MultiDropdown" then
-        ctrl = Controls.CreateMultiDropdown(self.settingsScroll, setting.Name, {
+        ctrl = Controls.CreateMultiDropdown(host, setting.Name, {
             Options = setting.Options, Default = setting.Value
         }, function(vals)
             setting.Value = vals
             if setting.Callback then safeCall(setting.Callback, vals) end
-        end)
+        end, self.modulesPage)
+        height = 28
         
     elseif setting.Type == "Keybind" then
-        ctrl = Controls.CreateKeybind(self.settingsScroll, setting.Name, {
+        ctrl = Controls.CreateKeybind(host, setting.Name, {
             Default = setting.Value
         }, function(val)
             setting.Value = val
-            mod.Keybind = val
+            if val then mod.Keybind = val end
             if setting.Callback then safeCall(setting.Callback, val) end
-        end)
+        end, self.modulesPage)
+        height = 28
         
     elseif setting.Type == "ColorPicker" then
-        ctrl = Controls.CreateColorPicker(self.settingsScroll, setting.Name, {
+        ctrl = Controls.CreateColorPicker(host, setting.Name, {
             Default = setting.Value
         }, function(val)
             setting.Value = val
             if setting.Callback then safeCall(setting.Callback, val) end
-        end)
+        end, self.modulesPage)
+        height = 28
         
     elseif setting.Type == "Button" then
-        ctrl = Controls.CreateButton(self.settingsScroll, setting.Name, function()
+        ctrl = Controls.CreateButton(host, setting.Name, function()
             if setting.Callback then safeCall(setting.Callback) end
         end)
+        height = 28
         
     elseif setting.Type == "Textbox" then
-        ctrl = Controls.CreateTextbox(self.settingsScroll, setting.Name, {
+        ctrl = Controls.CreateTextbox(host, setting.Name, {
             Default = setting.Value, Placeholder = setting.Placeholder
         }, function(val)
             setting.Value = val
             if setting.Callback then safeCall(setting.Callback, val) end
         end)
+        height = 28
         
     elseif setting.Type == "Section" then
-        ctrl = Controls.CreateSection(self.settingsScroll, setting.Name)
+        ctrl = Controls.CreateSection(host, setting.Name)
+        height = 20
         
     elseif setting.Type == "Label" then
-        ctrl = Controls.CreateLabel(self.settingsScroll, setting.Name)
+        ctrl = Controls.CreateLabel(host, setting.Name)
+        height = 18
     end
     
-    return ctrl
+    if ctrl then
+        return {frame = ctrl, height = height}
+    end
+    return nil
 end
 
 function UI:createConfigPage()
@@ -2971,6 +3049,95 @@ function UI:toggleMinimized()
             Size = UDim2.new(0, Theme.WindowWidth, 0, Theme.WindowHeight)
         }):Play()
     end
+    -- Keep the button icon in sync with the actual UI state
+    if self.minimizeIcon then
+        self.minimizeIcon:Destroy()
+        local icon = Icons.Icon(self.isMinimized and "Plus" or "Minus", 14)
+        icon.Size = UDim2.new(0, 14, 0, 14)
+        icon.Position = UDim2.new(0.5, -7, 0.5, -7)
+        icon.Parent = self.minimizeIcon.Parent
+        self.minimizeIcon = icon
+    end
+end
+
+function UI:showExitConfirmation()
+    -- Only one confirmation at a time
+    if self.exitConfirmation then return end
+    
+    local overlay = Instance.new("Frame")
+    overlay.Name = "ExitConfirmation"
+    overlay.Size = UDim2.new(1, 0, 1, 0)
+    overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    overlay.BackgroundTransparency = 0.5
+    overlay.BorderSizePixel = 0
+    overlay.ZIndex = 500
+    overlay.Parent = self.mainWindow
+    
+    local dialog = Instance.new("Frame")
+    dialog.Name = "Dialog"
+    dialog.Size = UDim2.new(0, 280, 0, 120)
+    dialog.Position = UDim2.new(0.5, -140, 0.5, -60)
+    dialog.BackgroundColor3 = Theme.Surface
+    dialog.BorderSizePixel = 0
+    dialog.ZIndex = 501
+    dialog.Parent = overlay
+    createCorner(dialog, 10)
+    createStroke(dialog, Theme.Border, 1)
+    
+    local title = createText(dialog, "Do you want to exit the UI?", 13, Theme.Text, Theme.FontMedium, Enum.TextXAlignment.Center)
+    title.Size = UDim2.new(1, -20, 0, 20)
+    title.Position = UDim2.new(0, 10, 0, 24)
+    title.ZIndex = 502
+    
+    local noBtn = Instance.new("TextButton")
+    noBtn.Name = "NoBtn"
+    noBtn.Size = UDim2.new(0, 80, 0, 30)
+    noBtn.Position = UDim2.new(1, -180, 1, -44)
+    noBtn.BackgroundColor3 = Theme.SurfaceLight
+    noBtn.BorderSizePixel = 0
+    noBtn.AutoButtonColor = false
+    noBtn.Text = "No"
+    noBtn.TextColor3 = Theme.TextSecondary
+    noBtn.TextSize = 12
+    noBtn.Font = Theme.FontMedium
+    noBtn.ZIndex = 502
+    noBtn.Parent = dialog
+    createCorner(noBtn, 6)
+    createStroke(noBtn, Theme.Border, 1)
+    
+    local yesBtn = Instance.new("TextButton")
+    yesBtn.Name = "YesBtn"
+    yesBtn.Size = UDim2.new(0, 80, 0, 30)
+    yesBtn.Position = UDim2.new(1, -90, 1, -44)
+    yesBtn.BackgroundColor3 = Theme.Error
+    yesBtn.BorderSizePixel = 0
+    yesBtn.AutoButtonColor = false
+    yesBtn.Text = "Yes"
+    yesBtn.TextColor3 = Theme.Text
+    yesBtn.TextSize = 12
+    yesBtn.Font = Theme.FontMedium
+    yesBtn.ZIndex = 502
+    yesBtn.Parent = dialog
+    createCorner(yesBtn, 6)
+    
+    local function closeDialog()
+        if self.exitConfirmation == overlay then
+            self.exitConfirmation = nil
+        end
+        overlay:Destroy()
+    end
+    
+    noBtn.MouseButton1Click:Connect(function()
+        -- No: dismiss the dialog only; UI state untouched
+        closeDialog()
+    end)
+    
+    yesBtn.MouseButton1Click:Connect(function()
+        closeDialog()
+        self:close()
+    end)
+    
+    self.exitConfirmation = overlay
 end
 
 function UI:makeDraggable()
