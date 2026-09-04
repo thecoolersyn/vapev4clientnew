@@ -3804,10 +3804,9 @@ function InitBallTracking()
         task.delay(1, function()
             AutoParry.CachedBlockButton = nil
             HyperionPort.ApplyHeadlessKorbloxDescription(Player.Character)
-		end
-		end)
-		end)
-	end
+        end)
+    end)
+end
 
 ProjectileLifecycle = setmetatable({}, { __mode = "k" })
 
