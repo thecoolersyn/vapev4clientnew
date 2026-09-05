@@ -1902,7 +1902,10 @@ function ModuleInstance:Set(name, value)
     local setting = self.Settings[name]
     if setting then
         setting.Value = value
-        if setting.Callback then
+        -- Store the value always, but only run the effect callback while the
+        -- module is enabled, so changing a setting on a disabled module does
+        -- nothing until the module is turned on.
+        if setting.Callback and self.Enabled then
             safeCall(setting.Callback, value)
         end
     end
@@ -3079,6 +3082,15 @@ function UI:createSettingControl(setting, mod, container)
     local host = container or self.settingsScroll
     local ctrl = nil
     
+    -- Runs a setting's effect callback only while its module is enabled. Each
+    -- control still writes setting.Value, so the value applies when the module
+    -- is turned on. Button callbacks are dispatched directly and stay ungated.
+    local function runCallback(...)
+        if mod.Enabled and setting.Callback then
+            safeCall(setting.Callback, ...)
+        end
+    end
+
     local lowerName = (setting.Name or ""):lower()
     if lowerName == "enabled" or lowerName == "disabled" or lowerName == "enable" or lowerName == "disable" then
         -- The module card header already provides the ONE enable toggle
@@ -3088,7 +3100,7 @@ function UI:createSettingControl(setting, mod, container)
     if setting.Type == "Toggle" then
         ctrl = Controls.CreateToggle(host, setting.Name, setting.Value, function(val)
             setting.Value = val
-            if setting.Callback then safeCall(setting.Callback, val) end
+            runCallback(val)
         end)
         
     elseif setting.Type == "Slider" then
@@ -3096,7 +3108,7 @@ function UI:createSettingControl(setting, mod, container)
             Min = setting.Min, Max = setting.Max, Default = setting.Value, Decimals = setting.Decimals
         }, function(val)
             setting.Value = val
-            if setting.Callback then safeCall(setting.Callback, val) end
+            runCallback(val)
         end)
         
     elseif setting.Type == "Dropdown" then
@@ -3104,7 +3116,7 @@ function UI:createSettingControl(setting, mod, container)
             Options = setting.Options, Default = setting.Value
         }, function(val)
             setting.Value = val
-            if setting.Callback then safeCall(setting.Callback, val) end
+            runCallback(val)
         end, self.modulesPage)
         
     elseif setting.Type == "MultiDropdown" then
@@ -3112,7 +3124,7 @@ function UI:createSettingControl(setting, mod, container)
             Options = setting.Options, Default = setting.Value
         }, function(vals)
             setting.Value = vals
-            if setting.Callback then safeCall(setting.Callback, vals) end
+            runCallback(vals)
         end, self.modulesPage)
         
     elseif setting.Type == "Keybind" then
@@ -3121,7 +3133,7 @@ function UI:createSettingControl(setting, mod, container)
         }, function(val)
             setting.Value = val
             if val then mod.Keybind = val end
-            if setting.Callback then safeCall(setting.Callback, val) end
+            runCallback(val)
         end, self.modulesPage)
         
     elseif setting.Type == "ColorPicker" then
@@ -3129,7 +3141,7 @@ function UI:createSettingControl(setting, mod, container)
             Default = setting.Value
         }, function(val)
             setting.Value = val
-            if setting.Callback then safeCall(setting.Callback, val) end
+            runCallback(val)
         end, self.modulesPage)
         
     elseif setting.Type == "Button" then
@@ -3142,7 +3154,7 @@ function UI:createSettingControl(setting, mod, container)
             Default = setting.Value, Placeholder = setting.Placeholder
         }, function(val)
             setting.Value = val
-            if setting.Callback then safeCall(setting.Callback, val) end
+            runCallback(val)
         end)
         
     elseif setting.Type == "Section" then
