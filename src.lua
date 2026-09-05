@@ -971,8 +971,9 @@ function Controls.CreateDropdown(parent, name, config, callback, popupHost)
         if open then closeDropdown() return end
         open = true
         
-        dropdownFrame = Instance.new("Frame")
-        dropdownFrame.Size = UDim2.new(0, btn.AbsoluteSize.X, 0, #options * 26 + 10)
+        local DROPDOWN_MAX_H = 220
+        dropdownFrame = Instance.new("ScrollingFrame")
+        dropdownFrame.Size = UDim2.new(0, btn.AbsoluteSize.X, 0, math.min(#options * 26 + 10, DROPDOWN_MAX_H))
         dropdownFrame.BackgroundColor3 = Theme.SurfaceLight
         dropdownFrame.BorderSizePixel = 0
         dropdownFrame.ZIndex = 100
@@ -980,6 +981,13 @@ function Controls.CreateDropdown(parent, name, config, callback, popupHost)
         anchorPopup(dropdownFrame, btn, 0, btn.AbsoluteSize.Y + 2)
         createCorner(dropdownFrame, 5)
         createStroke(dropdownFrame, Theme.Border, 1)
+        dropdownFrame.ScrollingDirection = Enum.ScrollingDirection.Y
+        dropdownFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+        dropdownFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+        dropdownFrame.ScrollBarThickness = 4
+        dropdownFrame.ScrollBarImageColor3 = Theme.AccentDim
+        dropdownFrame.ScrollBarImageTransparency = 0.35
+        dropdownFrame.ClipsDescendants = true
         
         local layout = createListLayout(dropdownFrame, 0)
         -- Padding must be >= corner radius so option buttons never paint over
@@ -1658,8 +1666,9 @@ function Controls.CreateMultiDropdown(parent, name, config, callback, popupHost)
         if open then closeDropdown() return end
         open = true
         
-        dropdownFrame = Instance.new("Frame")
-        dropdownFrame.Size = UDim2.new(0, btn.AbsoluteSize.X, 0, #options * 26 + 10)
+        local DROPDOWN_MAX_H = 220
+        dropdownFrame = Instance.new("ScrollingFrame")
+        dropdownFrame.Size = UDim2.new(0, btn.AbsoluteSize.X, 0, math.min(#options * 26 + 10, DROPDOWN_MAX_H))
         dropdownFrame.BackgroundColor3 = Theme.SurfaceLight
         dropdownFrame.BorderSizePixel = 0
         dropdownFrame.ZIndex = 100
@@ -1667,6 +1676,13 @@ function Controls.CreateMultiDropdown(parent, name, config, callback, popupHost)
         anchorPopup(dropdownFrame, btn, 0, btn.AbsoluteSize.Y + 2)
         createCorner(dropdownFrame, 5)
         createStroke(dropdownFrame, Theme.Border, 1)
+        dropdownFrame.ScrollingDirection = Enum.ScrollingDirection.Y
+        dropdownFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+        dropdownFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+        dropdownFrame.ScrollBarThickness = 4
+        dropdownFrame.ScrollBarImageColor3 = Theme.AccentDim
+        dropdownFrame.ScrollBarImageTransparency = 0.35
+        dropdownFrame.ClipsDescendants = true
         
         local layout = createListLayout(dropdownFrame, 0)
         -- Padding must be >= corner radius so option buttons never paint over
