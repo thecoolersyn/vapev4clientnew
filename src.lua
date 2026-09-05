@@ -431,13 +431,20 @@ local NOTIF_WIDTH = 280
 local NOTIF_HEIGHT = 60
 local NOTIF_GAP = 8
 local NOTIF_MARGIN = 20
-local NOTIF_SLIDE = 60  -- extra distance past the card edge when off-screen
+local NOTIF_SLIDE = 80  -- extra distance past the card edge when off-screen
 local NOTIF_MAX = 5
+
+-- Dedicated notification tweens: slower and smoother than the UI defaults.
+local NOTIF_TWEEN_IN    = TweenInfo.new(0.35, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+local NOTIF_TWEEN_OUT   = TweenInfo.new(0.30, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+local NOTIF_TWEEN_MOVE  = TweenInfo.new(0.30, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
 
 function NotificationService.new()
     local self = setmetatable({}, NotificationService)
     self.notifications = {}  -- ordered oldest -> newest (bottom -> top)
     self.container = nil
+    self._exiting = {}       -- cards currently sliding out
+    self._tweens = {}        -- per-card active tween (position/fade)
     return self
 end
 
@@ -461,32 +468,80 @@ function NotificationService:Init(parent)
     self.screen = screen
 end
 
--- Smoothly moves every notification into its stacked slot (oldest at the
--- bottom). Called after any add/remove so the stack never teleports.
+-- Cancel any in-flight tween on `card` and start a fresh one. The previous
+-- Completed handler is left alone (it only clears the table slot).
+function NotificationService:_tween(card, info, props)
+    local prev = self._tweens[card]
+    if prev then pcall(function() prev:Cancel() end) end
+    local t = TweenService:Create(card, info, props)
+    self._tweens[card] = t
+    t.Completed:Once(function()
+        if self._tweens[card] == t then self._tweens[card] = nil end
+    end)
+    t:Play()
+    return t
+end
+
+-- Compute the target position for the card at `index` (1-based).
+function NotificationService:_slotTarget(index)
+    local offset = (index - 1) * (NOTIF_HEIGHT + NOTIF_GAP)
+    return UDim2.new(0, 0, 1, -(offset + NOTIF_HEIGHT))
+end
+
+-- Smoothly moves every non-exiting notification into its stacked slot
+-- (oldest at the bottom). Called after any add/remove so the stack
+-- never teleports.
 function NotificationService:_relayout(animate)
-    local offset = 0
-    for _, card in ipairs(self.notifications) do
-        local target = UDim2.new(0, 0, 1, -(offset + NOTIF_HEIGHT))
-        if animate then
-            TweenService:Create(card, Theme.FastTween, {Position = target}):Play()
-        else
-            card.Position = target
+    for i, card in ipairs(self.notifications) do
+        if not self._exiting[card] then
+            local target = self:_slotTarget(i)
+            if animate then
+                -- Also settle GroupTransparency to 0: if this card's entry
+                -- tween is still running, _tween cancels it, and without this
+                -- the card could be left stuck mid-fade (semi-transparent).
+                self:_tween(card, NOTIF_TWEEN_MOVE, {Position = target, GroupTransparency = 0})
+            else
+                card.Position = target
+            end
         end
-        offset = offset + NOTIF_HEIGHT + NOTIF_GAP
     end
 end
 
-function NotificationService:_remove(card)
+-- Begin the slide-out animation for a card. It is removed from the list
+-- synchronously so _relayout can shift the remaining cards immediately
+-- without tweening the exiting card. Cleanup (Destroy) happens only after
+-- the exit animation completes.
+function NotificationService:_startExit(card)
+    if not card or self._exiting[card] then return end
+    self._exiting[card] = true
+
+    -- Remove from the active list so _relayout skips it.
     for i, n in ipairs(self.notifications) do
         if n == card then
             table.remove(self.notifications, i)
             break
         end
     end
-    if card.Parent then
-        card:Destroy()
-    end
+
+    -- Close the gap left behind by the removed card.
     self:_relayout(true)
+
+    if not card.Parent then
+        self._exiting[card] = nil
+        return
+    end
+
+    -- Slide out toward the LEFT + fade.
+    local exitY = card.Position.Y.Offset
+    local t = self:_tween(card, NOTIF_TWEEN_OUT, {
+        GroupTransparency = 1,
+        Position = UDim2.new(0, -(NOTIF_WIDTH + NOTIF_SLIDE), 1, exitY)
+    })
+    t.Completed:Once(function()
+        self._exiting[card] = nil
+        self._tweens[card] = nil
+        if card.Parent then card:Destroy() end
+    end)
 end
 
 function NotificationService:Notify(title, message, notifType)
@@ -500,7 +555,7 @@ function NotificationService:Notify(title, message, notifType)
 
     -- Cap the stack so it never grows past the screen edge
     while #self.notifications >= NOTIF_MAX do
-        self:_remove(self.notifications[1])
+        self:_startExit(self.notifications[1])
     end
 
     -- CanvasGroup so the entire card (background, stroke, text) fades as one
@@ -556,28 +611,19 @@ function NotificationService:Notify(title, message, notifType)
     msgLabel.TextXAlignment = Enum.TextXAlignment.Left
     msgLabel.Parent = card
 
-    -- Stack into place, then slide in from the LEFT
+    -- Append, compute slot, slide in from the LEFT.
     self.notifications[#self.notifications + 1] = card
-    self:_relayout(false)
-    local slotY = card.Position.Y.Offset
+    local target = self:_slotTarget(#self.notifications)
+    local slotY = target.Y.Offset
     card.Position = UDim2.new(0, -(NOTIF_WIDTH + NOTIF_SLIDE), 1, slotY)
-    TweenService:Create(card, Theme.FastTween, {
+    self:_tween(card, NOTIF_TWEEN_IN, {
         GroupTransparency = 0,
-        Position = UDim2.new(0, 0, 1, slotY)
-    }):Play()
+        Position = target,
+    })
 
-    -- Auto remove: slide out toward the LEFT, destroy only after the tween
+    -- Auto-remove after a delay; _startExit handles the smooth exit.
     task.delay(3.5, function()
-        if not card.Parent then return end
-        local exitY = card.Position.Y.Offset
-        local tweenOut = TweenService:Create(card, Theme.FastTween, {
-            GroupTransparency = 1,
-            Position = UDim2.new(0, -(NOTIF_WIDTH + NOTIF_SLIDE), 1, exitY)
-        })
-        tweenOut:Play()
-        tweenOut.Completed:Once(function()
-            self:_remove(card)
-        end)
+        self:_startExit(card)
     end)
 end
 
@@ -1945,6 +1991,9 @@ function UI.new()
     self.keybindOverlay = nil
     self.exitConfirmation = nil
     self.settingsPanelVisible = false
+    self.restoreBtn = nil
+    self._winTween = nil
+    self._btnTween = nil
     return self
 end
 
@@ -2000,7 +2049,7 @@ function UI:notifyKeybindToggle(mod)
 end
 
 function UI:createMainWindow()
-    local win = Instance.new("Frame")
+    local win = Instance.new("CanvasGroup")
     win.Name = "MainWindow"
     win.Size = UDim2.new(0, Theme.WindowWidth, 0, Theme.WindowHeight)
     win.Position = UDim2.new(0.5, -Theme.WindowWidth/2, 0.5, -Theme.WindowHeight/2)
@@ -2071,14 +2120,6 @@ function UI:createTopBar()
     bar.Active = true
     bar.Parent = self.mainWindow
     createStroke(bar, Theme.Border, 1)
-    
-    -- Fix corners (only top)
-    local bgCover = Instance.new("Frame")
-    bgCover.Size = UDim2.new(1, 0, 0, 10)
-    bgCover.Position = UDim2.new(0, 0, 1, -5)
-    bgCover.BackgroundColor3 = Theme.Surface
-    bgCover.BorderSizePixel = 0
-    bgCover.Parent = bar
     
     self.topBar = bar
     
@@ -3470,28 +3511,124 @@ function UI:showPage(pageName)
     if self.configPage then self.configPage.Visible = (pageName == "Config") end
 end
 
-function UI:toggleMinimized()
-    self.isMinimized = not self.isMinimized
-    if self.isMinimized then
-        TweenService:Create(self.mainWindow, Theme.TweenInfo, {
-            Size = UDim2.new(0, Theme.WindowWidth, 0, Theme.TopBarHeight)
-        }):Play()
-    else
-        TweenService:Create(self.mainWindow, Theme.TweenInfo, {
-            Size = UDim2.new(0, Theme.WindowWidth, 0, Theme.WindowHeight)
-        }):Play()
+-- Small floating "+" restore button. Parented to the ScreenGui (NOT the main
+-- window) so it survives while the window is hidden. Created once and reused,
+-- so repeated minimize/restore cycles never spawn duplicates.
+function UI:createRestoreButton()
+    if self.restoreBtn then return self.restoreBtn end
+
+    local btn = Instance.new("CanvasGroup")
+    btn.Name = "RestoreButton"
+    btn.Size = UDim2.new(0, 44, 0, 44)
+    btn.AnchorPoint = Vector2.new(0, 0)
+    btn.BackgroundColor3 = Theme.Surface
+    btn.BorderSizePixel = 0
+    btn.GroupTransparency = 1
+    btn.Visible = false
+    btn.ZIndex = 10
+    btn.Parent = self.screen
+    createCorner(btn, 22)
+    createStroke(btn, Theme.BorderLight, 1)
+
+    -- Transparent click catcher filling the circle (CanvasGroup itself is not
+    -- a button, so a child TextButton handles the press).
+    local click = Instance.new("TextButton")
+    click.Name = "Click"
+    click.Size = UDim2.new(1, 0, 1, 0)
+    click.BackgroundTransparency = 1
+    click.Text = ""
+    click.AutoButtonColor = false
+    click.ZIndex = 11
+    click.Parent = btn
+
+    local icon = Icons.Icon("Plus", 18)
+    icon.Size = UDim2.new(0, 18, 0, 18)
+    icon.Position = UDim2.new(0.5, -9, 0.5, -9)
+    icon.ZIndex = 12
+    icon.Parent = btn
+
+    click.MouseEnter:Connect(function()
+        TweenService:Create(btn, Theme.FastTween, {BackgroundColor3 = Theme.SurfaceHover}):Play()
+    end)
+    click.MouseLeave:Connect(function()
+        TweenService:Create(btn, Theme.FastTween, {BackgroundColor3 = Theme.Surface}):Play()
+    end)
+    click.MouseButton1Click:Connect(function()
+        self:restore()
+    end)
+
+    self.restoreBtn = btn
+    return btn
+end
+
+function UI:minimize()
+    if self.isMinimized then return end
+    self.isMinimized = true
+
+    -- Drop the settings panel / popups so they don't linger hidden.
+    self.selectedModule = nil
+    self:setSettingsPanelVisible(false)
+
+    local win = self.mainWindow
+    local btn = self:createRestoreButton()
+    -- Sit the restore button where the window's top-left corner was.
+    btn.Position = win.Position
+
+    -- Fade the restore button in.
+    if self._btnTween then self._btnTween:Cancel() end
+    btn.Visible = true
+    btn.GroupTransparency = 1
+    self._btnTween = TweenService:Create(btn, Theme.SlowTween, {GroupTransparency = 0})
+    self._btnTween:Play()
+
+    -- Fade the whole window out (CanvasGroup fades all children as one), then
+    -- hide it. Guarded so a rapid restore mid-fade doesn't leave it hidden.
+    if self._winTween then self._winTween:Cancel() end
+    win.Visible = true
+    local t = TweenService:Create(win, Theme.SlowTween, {GroupTransparency = 1})
+    self._winTween = t
+    t.Completed:Once(function()
+        if self.isMinimized and self._winTween == t then
+            win.Visible = false
+        end
+    end)
+    t:Play()
+end
+
+function UI:restore()
+    if not self.isMinimized then return end
+    self.isMinimized = false
+
+    local win = self.mainWindow
+    local btn = self.restoreBtn
+
+    -- Fade the restore button out, then hide it.
+    if btn then
+        if self._btnTween then self._btnTween:Cancel() end
+        local bt = TweenService:Create(btn, Theme.SlowTween, {GroupTransparency = 1})
+        self._btnTween = bt
+        bt.Completed:Once(function()
+            if not self.isMinimized and self._btnTween == bt then
+                btn.Visible = false
+            end
+        end)
+        bt:Play()
     end
-    -- Keep the button icon in sync with the actual UI state
-    if self.minimizeIcon then
-        self.minimizeIcon:Destroy()
-        local iconName = self.isMinimized and "Plus" or "Minus"
-        local icon = Icons.Icon(iconName, 14)
-        icon.Name = "MinimizeIcon"
-        icon.Size = UDim2.new(0, 14, 0, 14)
-        icon.Position = UDim2.new(0.5, -7, 0.5, -7)
-        icon.Parent = self.minimizeIcon.Parent
-        self.minimizeIcon = icon
-        self.minimizeIconName = iconName
+
+    -- Fade the window back in.
+    if self._winTween then self._winTween:Cancel() end
+    win.Visible = true
+    win.GroupTransparency = 1
+    local wt = TweenService:Create(win, Theme.SlowTween, {GroupTransparency = 0})
+    self._winTween = wt
+    wt:Play()
+end
+
+function UI:toggleMinimized()
+    if self.isMinimized then
+        self:restore()
+    else
+        self:minimize()
     end
 end
 
@@ -3613,6 +3750,9 @@ function UI:close()
         end
     end
     self.connections = {}
+    if self._winTween then pcall(function() self._winTween:Cancel() end) self._winTween = nil end
+    if self._btnTween then pcall(function() self._btnTween:Cancel() end) self._btnTween = nil end
+    self.restoreBtn = nil
     if self.screen then
         self.screen:Destroy()
     end
