@@ -1,18 +1,3 @@
---[[
-    Impulse UI Framework v1.0
-    A complete, modular, data-driven Roblox UI framework.
-    
-    Features:
-    - Draggable desktop-style window
-    - Module registration system with categories
-    - Data-driven settings panel (Toggle, Slider, Dropdown, etc.)
-    - Config manager with JSON serialization
-    - Notification system
-    - Lucide-style icons
-    - Dark theme
-    - Animations via TweenService
-]]
-
 local Impulse = {}
 Impulse.__index = Impulse
 
@@ -1042,7 +1027,14 @@ function Controls.CreateKeybind(parent, name, config, callback, popupHost)
     createCorner(btn, 5)
     createStroke(btn, Theme.Border, 1)
     
-    local valueLabel = createText(btn, tostring(value), 10, Theme.Text, Theme.FontMedium, Enum.TextXAlignment.Center)
+    local function keybindText(v)
+        if v == nil or v == Enum.KeyCode.Unknown then
+            return "..."
+        end
+        return tostring(v.Name or v)
+    end
+
+    local valueLabel = createText(btn, keybindText(value), 10, Theme.Text, Theme.FontMedium, Enum.TextXAlignment.Center)
     valueLabel.Size = UDim2.new(1, 0, 1, 0)
     
     local function updateLabel()
@@ -1050,7 +1042,7 @@ function Controls.CreateKeybind(parent, name, config, callback, popupHost)
             valueLabel.Text = "..."
             valueLabel.TextColor3 = Theme.Accent
         else
-            valueLabel.Text = tostring(value)
+            valueLabel.Text = keybindText(value)
             valueLabel.TextColor3 = Theme.Text
         end
     end
@@ -2019,6 +2011,22 @@ function UI:createMainWindow()
     createCorner(win, 10)
     createStroke(win, Theme.Border, 1)
     self.mainWindow = win
+
+    -- Click sink: a transparent button covering the whole window, below all
+    -- content. Clicks that land on plain frames (which do not consume input)
+    -- fall through to this button, so the click is marked game-processed and
+    -- the game's own mouse handlers ignore it - clicking the UI no longer
+    -- swings the sword behind the window.
+    local clickSink = Instance.new("TextButton")
+    clickSink.Name = "ClickSink"
+    clickSink.Size = UDim2.new(1, 0, 1, 0)
+    clickSink.Position = UDim2.new(0, 0, 0, 0)
+    clickSink.BackgroundTransparency = 1
+    clickSink.Text = ""
+    clickSink.AutoButtonColor = false
+    clickSink.Active = true
+    clickSink.ZIndex = 0
+    clickSink.Parent = win
     
     -- Shadow effect
     local shadow = Instance.new("ImageLabel")
@@ -2058,6 +2066,9 @@ function UI:createTopBar()
     bar.Size = UDim2.new(1, 0, 0, Theme.TopBarHeight)
     bar.BackgroundColor3 = Theme.Surface
     bar.BorderSizePixel = 0
+    -- Active so topBar.InputBegan actually fires (dragging) and so clicks on
+    -- the bar are consumed instead of reaching the game.
+    bar.Active = true
     bar.Parent = self.mainWindow
     createStroke(bar, Theme.Border, 1)
     
@@ -2079,7 +2090,7 @@ function UI:createTopBar()
     logo.BackgroundTransparency = 1
     logo.Parent = bar
     
-    local logoText = createText(logo, "VAPE", 15, Theme.Text, Theme.FontBold, Enum.TextXAlignment.Left)
+    local logoText = createText(logo, "HYPERION", 14, Theme.Text, Theme.FontBold, Enum.TextXAlignment.Left)
     logoText.Size = UDim2.new(1, 0, 1, 0)
     logoText.Position = UDim2.new(0, 0, 0, 1)
     
