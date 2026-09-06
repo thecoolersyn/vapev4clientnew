@@ -7,7 +7,7 @@ local Impulse
 
 -- Load from URL
 if game and game.HttpGet then
-    local url = "https://raw.githubusercontent.com/thecoolersyn/vapev4clientnew/refs/heads/main/src.lua"
+    local url = "https://raw.githubusercontent.com/thecoolersyn/vapev4clientnew/main/src.lua"
     local ok, content = pcall(game.HttpGet, game, url)
     if ok and content then
         local fn, err = loadstring(content)
@@ -261,5 +261,8 @@ if not Config:Exists("Blatant") then
 end
 
 print("Impulse UI Framework loaded successfully!")
-print("Categories:", #Impulse.GetCategories())
-print("Modules:", #Impulse.GetModules())
+local catCount, modCount = 0, 0
+for _ in pairs(Impulse.GetCategories()) do catCount = catCount + 1 end
+for _ in pairs(Impulse.GetModules()) do modCount = modCount + 1 end
+print("Categories:", catCount)
+print("Modules:", modCount)
