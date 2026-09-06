@@ -445,6 +445,7 @@ function NotificationService.new()
     self.container = nil
     self._exiting = {}       -- cards currently sliding out
     self._tweens = {}        -- per-card active tween (position/fade)
+    self._last = nil         -- last notification (title/message/type/time) for de-dupe
     return self
 end
 
@@ -548,6 +549,19 @@ function NotificationService:Notify(title, message, notifType)
     if not self.container then self:Init() end
 
     notifType = notifType or "info"
+
+    -- De-dupe: collapse an identical notification that arrives within a short
+    -- window. This stops the stack ever showing the same toast twice when a
+    -- toggle fires the notification more than once (e.g. a keybind listener
+    -- left connected by a UI re-create, or a rapid double call).
+    local now = time()
+    local last = self._last
+    if last and last.title == title and last.message == message
+        and last.type == notifType and (now - last.time) < 0.5 then
+        return
+    end
+    self._last = { title = title, message = message, type = notifType, time = now }
+
     local color = Theme.Accent
     if notifType == "error" then color = Theme.Error
     elseif notifType == "warning" then color = Theme.Warning
@@ -2039,6 +2053,16 @@ function UI:Init()
     if notif then
         notif:Init(screen)
     end
+
+    -- Keep the minimize/restore state and the floating restore button in sync
+    -- with the window's ACTUAL visibility. The window can be hidden either by
+    -- the "-" button (UI:minimize) or by an external keybind that flips
+    -- mainWindow.Visible directly; watching the property means both paths show
+    -- the restore button and both can bring the window back, so the keybind and
+    -- the minimize button never disagree.
+    self.mainWindow:GetPropertyChangedSignal("Visible"):Connect(function()
+        self:_syncMinimizedState()
+    end)
     
     -- Global keybind listener: fires each bound module when its key is pressed.
     -- Skipped entirely while a keybind capture is in progress so the captured
@@ -3581,42 +3605,118 @@ function UI:createRestoreButton()
     click.MouseLeave:Connect(function()
         TweenService:Create(btn, Theme.FastTween, {BackgroundColor3 = Theme.Surface}):Play()
     end)
-    click.MouseButton1Click:Connect(function()
-        self:restore()
+
+    -- Draggable, but still clickable: a press that stays put restores the
+    -- window; a press that moves drags the button around the screen instead.
+    local dragging = false
+    local moved = false
+    local startInput, startPos
+    click.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            moved = false
+            startInput = input.Position
+            startPos = btn.Position
+        end
     end)
+    local moveConn = UserInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = input.Position - startInput
+            if not moved and (math.abs(delta.X) > 3 or math.abs(delta.Y) > 3) then
+                moved = true
+                self._restoreBtnMoved = true
+            end
+            if moved then
+                local cam = workspace.CurrentCamera
+                local vp = cam and cam.ViewportSize or Vector2.new(1920, 1080)
+                local maxX = math.max(0, vp.X - btn.AbsoluteSize.X)
+                local maxY = math.max(0, vp.Y - btn.AbsoluteSize.Y)
+                local nx = math.clamp(startPos.X.Offset + delta.X, 0, maxX)
+                local ny = math.clamp(startPos.Y.Offset + delta.Y, 0, maxY)
+                btn.Position = UDim2.new(startPos.X.Scale, nx, startPos.Y.Scale, ny)
+            end
+        end
+    end)
+    local endConn = UserInputService.InputEnded:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+            if not moved then
+                self:restore()
+            end
+        end
+    end)
+    self.connections[#self.connections + 1] = moveConn
+    self.connections[#self.connections + 1] = endConn
 
     self.restoreBtn = btn
     return btn
 end
 
+-- The single source of truth for isMinimized and the restore button is the
+-- window's Visible property (watched in UI:Init). minimize/restore just drive
+-- that property; _syncMinimizedState reacts to it, so an external flip of
+-- mainWindow.Visible (the keybind) is handled identically to the "-" button.
+function UI:_syncMinimizedState()
+    local win = self.mainWindow
+    if not win then return end
+    self.isMinimized = not win.Visible
+    if win.Visible then
+        -- Make sure the window is actually opaque: a direct Visible=true (e.g.
+        -- from the keybind) must not leave it stuck transparent after a fade-out.
+        if self._winTween then self._winTween:Cancel() end
+        local wt = TweenService:Create(win, Theme.SlowTween, {GroupTransparency = 0})
+        self._winTween = wt
+        wt:Play()
+        self:_hideRestoreButton()
+    else
+        self:_showRestoreButton()
+    end
+end
+
+function UI:_showRestoreButton()
+    local btn = self:createRestoreButton()
+    local win = self.mainWindow
+    -- Park it on the window's top-left corner unless the user dragged it.
+    if win and not self._restoreBtnMoved then
+        btn.Position = win.Position
+    end
+    if self._btnTween then self._btnTween:Cancel() end
+    btn.Visible = true
+    btn.GroupTransparency = 1
+    local t = TweenService:Create(btn, Theme.SlowTween, {GroupTransparency = 0})
+    self._btnTween = t
+    t:Play()
+end
+
+function UI:_hideRestoreButton()
+    local btn = self.restoreBtn
+    if not btn then return end
+    if self._btnTween then self._btnTween:Cancel() end
+    local t = TweenService:Create(btn, Theme.SlowTween, {GroupTransparency = 1})
+    self._btnTween = t
+    t.Completed:Once(function()
+        if self._btnTween == t and not self.isMinimized then
+            btn.Visible = false
+        end
+    end)
+    t:Play()
+end
+
 function UI:minimize()
-    if self.isMinimized then return end
-    self.isMinimized = true
+    local win = self.mainWindow
+    if not win or not win.Visible then return end
 
     -- Drop the settings panel / popups so they don't linger hidden.
     self.selectedModule = nil
     self:setSettingsPanelVisible(false)
 
-    local win = self.mainWindow
-    local btn = self:createRestoreButton()
-    -- Sit the restore button where the window's top-left corner was.
-    btn.Position = win.Position
-
-    -- Fade the restore button in.
-    if self._btnTween then self._btnTween:Cancel() end
-    btn.Visible = true
-    btn.GroupTransparency = 1
-    self._btnTween = TweenService:Create(btn, Theme.SlowTween, {GroupTransparency = 0})
-    self._btnTween:Play()
-
-    -- Fade the whole window out (CanvasGroup fades all children as one), then
-    -- hide it. Guarded so a rapid restore mid-fade doesn't leave it hidden.
+    -- Fade the window out, then hide it. Hiding flips Visible, which the watcher
+    -- turns into "show the restore button".
     if self._winTween then self._winTween:Cancel() end
-    win.Visible = true
     local t = TweenService:Create(win, Theme.SlowTween, {GroupTransparency = 1})
     self._winTween = t
     t.Completed:Once(function()
-        if self.isMinimized and self._winTween == t then
+        if self._winTween == t then
             win.Visible = false
         end
     end)
@@ -3624,39 +3724,20 @@ function UI:minimize()
 end
 
 function UI:restore()
-    if not self.isMinimized then return end
-    self.isMinimized = false
-
     local win = self.mainWindow
-    local btn = self.restoreBtn
-
-    -- Fade the restore button out, then hide it.
-    if btn then
-        if self._btnTween then self._btnTween:Cancel() end
-        local bt = TweenService:Create(btn, Theme.SlowTween, {GroupTransparency = 1})
-        self._btnTween = bt
-        bt.Completed:Once(function()
-            if not self.isMinimized and self._btnTween == bt then
-                btn.Visible = false
-            end
-        end)
-        bt:Play()
-    end
-
-    -- Fade the window back in.
-    if self._winTween then self._winTween:Cancel() end
+    if not win or win.Visible then return end
+    -- Showing flips Visible, which the watcher turns into "fade the window in
+    -- and hide the restore button".
     win.Visible = true
-    win.GroupTransparency = 1
-    local wt = TweenService:Create(win, Theme.SlowTween, {GroupTransparency = 0})
-    self._winTween = wt
-    wt:Play()
 end
 
 function UI:toggleMinimized()
-    if self.isMinimized then
-        self:restore()
-    else
+    local win = self.mainWindow
+    if not win then return end
+    if win.Visible then
         self:minimize()
+    else
+        self:restore()
     end
 end
 
@@ -3804,6 +3885,13 @@ end
 
 function Impulse:_createWindow(config)
     config = config or {}
+    -- Tear down any previous window first. Without this, re-creating the UI
+    -- leaves the old instance's global keybind listener connected, so a single
+    -- keybind press fires the toggle (and its notification) once per leaked
+    -- listener - the "notifications sometimes doubled" symptom.
+    if self._ui then
+        pcall(function() self._ui:close() end)
+    end
     self._ui = UI.new()
     self._ui:Init()
     return self._ui
